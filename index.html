@@ -23,7 +23,7 @@
     <meta property="og:url" content="https://sonareava.com.br/" />
     <meta property="og:image" content="https://sonareava.com.br/media/web/scene-01-poster-desktop.webp" />
     <meta property="og:image:width" content="1920" />
-    <meta property="og:image:height" content="1058" />
+    <meta property="og:image:height" content="1080" />
     <meta property="og:locale" content="pt_BR" />
     <meta name="twitter:card" content="summary_large_image" />
 
@@ -32,10 +32,13 @@
     <link rel="apple-touch-icon" href="/brand/sonare-mark-192.png" />
 
     <!-- The opening frame is the LCP: fetch it before the bundle asks for it.
-         Built straight from frame 0 of the master, full-range decoded, at the
-         source's own 3876:2136 aspect so object-fit:cover frames it exactly
-         like the canvas. AVIF because lossy WebP darkens this night scene by
-         1.3 luma, which would show as a flash at the poster→video handover.
+         Built from frame 0 of the GOP-6 file the canvas actually plays — not
+         the master — so the handover is between two identical images: measured
+         mean luma 38 on both. At the source's own 16:9 aspect, so
+         object-fit:cover frames it exactly like the canvas. AVIF because lossy
+         WebP darkens this night scene by 1.3 luma, which would show as a flash
+         at the poster→video handover. (The .webp beside it is for og:image,
+         which social crawlers need and where the shift does not matter.)
 
          Desktop only, deliberately: the poster belongs to CanvasNarrative, and
          below 900px Journey renders SegmentPlayback instead, which never asks

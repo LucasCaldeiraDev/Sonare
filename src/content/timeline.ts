@@ -61,38 +61,18 @@ export type Segment = {
 export const FPS = 24;
 
 /**
- * `?s1=v2` swaps ONLY scene 01 for the Higgsfield v2 test take (8.041667 s,
- * 193 frames, 3840x2160), served from media-comparison/ exactly like the other
- * dev-only sets, so nothing new touches public/. Segments 2-5 keep the v1
- * footage and slide 1.125 s later — the extra runway the longer opening adds.
- * Two overlays tied to old scene-01 content are adjusted: the SIM2 card is
- * dropped (no projector in the new exterior) and the first B&W card starts at
- * the scene-02 cut, where the towers actually appear. A/B: same URL without
- * the flag serves production v1 untouched.
+ * Scene 01 starts at frame 0.
+ *
+ * The previous master opened on an unsettled camera move — frame 0 measurably
+ * softer than frame 3 — so the timeline skipped three frames to start from the
+ * sharpest point at rest. The current scene 01 is generated from an approved
+ * still as its literal first frame, so there is nothing to skip: frame 0 is the
+ * still itself, already settled and at full acutance.
+ *
+ * Kept as a named constant rather than deleted: it is the one lever that moves
+ * every overlay with the footage, and the next master may need it again.
  */
-const s1v2 =
-  import.meta.env.DEV && new URLSearchParams(window.location.search).get("s1") === "v2";
-/** Seconds the v2 opening adds to everything after segment 1. */
-const S1_DELTA = s1v2 ? 1.125 : 0;
-
-/**
- * Scene 01 starts at frame 3, not frame 0.
- *
- * Frame 0 of the master is measurably soft: acutance 7,114 against 8,278 at
- * frame 3 and 8,753 at frame 8 — only 1 of the first 25 frames sits within ±2%
- * of frame 0, and that one is frame 0 itself. The same curve is present in the
- * untagged master, so it is the delivered footage, not our pipeline. It is the
- * opening frame of a camera move that has not settled.
- *
- * Frame 3 recovers 16,4% of the available 23% while keeping the ease-in almost
- * intact (inter-frame motion 6,81 against 6,58 at frame 1), so the shot still
- * starts from rest instead of already travelling.
- *
- * Nothing is re-encoded or cut. The video is played from (3 + 0.5)/24 s and the
- * global timeline is 3 frames — exactly 125 ms — shorter.
- */
-/** The v2 test take opens on its master still, already settled — no skip. */
-export const INTRO_OFFSET_FRAMES = s1v2 ? 0 : 3;
+export const INTRO_OFFSET_FRAMES = 0;
 const INTRO_OFFSET = INTRO_OFFSET_FRAMES / FPS;
 
 /**
@@ -232,6 +212,22 @@ const mediaFor = (scene: string) =>
  * **tv/limited**; the re-encode changes keyframe spacing and nothing else, and
  * its predecessors are all still on disk for A/B.
  *
+ * SCENE 01 IS THE EXCEPTION, replaced 2026-08-07 by a new Higgsfield/Seedance
+ * 2.0 take: an 8s exterior approach at 3840x2160, generated between two
+ * approved stills so its last frame lands on the entrance the journey continues
+ * from. It arrives as HEVC 10-bit already tagged bt709/tv, so there is no remux
+ * step for it — the GOP-6 encode is taken straight off the master with the same
+ * parameters as the rest of the set (x264 slow, CRF 16, keyint 6, closed GOP,
+ * no filter chain). Its poster is cut from that GOP-6 file rather than the
+ * master, which is what makes the poster→video handover flash-free: measured
+ * mean luma 38 on both. The superseded v1 scene 01 — video, reverse and poster
+ * — is archived in media-comparison/source-archive/v1-scene-01/.
+ *
+ * Note for `?media=original`: the remux set it reaches for is not present in
+ * this checkout — media-comparison/source-archive/ holds only v1-scene-01/ —
+ * so that flag currently resolves to nothing for every scene. It is dev-only
+ * and compiled out of builds, so this costs production nothing.
+ *
  * The masters ship with no colour metadata whatsoever: no VUI
  * video_signal_type, no `colr` box. Every player therefore falls back to
  * limited range — VLC, QuickTime, the Higgsfield preview, Chrome. That default
@@ -253,7 +249,7 @@ const mediaFor = (scene: string) =>
  *   node media-comparison/scene01-fidelity/tools/verify-scenes.mjs
  *
  *   scene  elementary MD5 (master == tv == full)
- *   01     f98db8eb5e9687724cfb989897f2001d
+ *   01     f98db8eb5e9687724cfb989897f2001d   ← v1, now archived; no longer served
  *   02     db33fef3206a60ec2251f10a6f8a729a
  *   03     a6a9cfcafde02ff8fb6dc3c56285ce96
  *   04     198dda002056a5c4d9de33513931ca9f
@@ -267,23 +263,19 @@ export const SEGMENTS: Segment[] = [
     id: "fachada",
     index: 1,
     label: "Fachada",
-    src: s1v2
-      ? "/media-comparison/higgsfield/new-renders/site/scene-01-v2-4k-bt709-tv-gop6.mp4"
-      : mediaFor("01"),
-    reverseSrc: s1v2
-      ? "/media-comparison/higgsfield/new-renders/site/scene-01-v2-4k-bt709-tv-gop6-reverse.mp4"
-      : reverseMediaFor("01"),
-    poster: s1v2
-      ? "/media-comparison/higgsfield/new-renders/site/scene-01-v2-poster-desktop.webp"
-      : "/media/web/scene-01-poster-desktop.avif",
-    duration: s1v2 ? 8.041667 : 6.916667,
-    frames: s1v2 ? 193 : 166,
-    mediaFrames: s1v2 ? 193 : 169,
+    src: mediaFor("01"),
+    reverseSrc: reverseMediaFor("01"),
+    poster: "/media/web/scene-01-poster-desktop.avif",
+    duration: 8.041667,
+    frames: 193,
+    mediaFrames: 193,
     offsetFrames: INTRO_OFFSET_FRAMES,
     globalStart: 0,
-    globalEnd: s1v2 ? 8.041667 : 6.916667,
-    width: s1v2 ? 3840 : 3876,
-    height: s1v2 ? 2160 : 2136,
+    globalEnd: 8.041667,
+    // 3840x2160 — the v2 opening is exact 16:9, unlike the 3876x2136 of the
+    // scenes it feeds into. Handled at draw time, never by re-encoding.
+    width: 3840,
+    height: 2160,
   },
   {
     id: "living",
@@ -295,8 +287,8 @@ export const SEGMENTS: Segment[] = [
     frames: 97,
     mediaFrames: 97,
     offsetFrames: 0,
-    globalStart: 6.916667 + S1_DELTA,
-    globalEnd: 10.958334 + S1_DELTA,
+    globalStart: 8.041667,
+    globalEnd: 12.083334,
     width: 3876,
     height: 2136,
   },
@@ -310,8 +302,8 @@ export const SEGMENTS: Segment[] = [
     frames: 121,
     mediaFrames: 121,
     offsetFrames: 0,
-    globalStart: 10.958334 + S1_DELTA,
-    globalEnd: 16.000001 + S1_DELTA,
+    globalStart: 12.083334,
+    globalEnd: 17.125001,
     // The odd one out: 3856x2148 (AR 1.79516) against 3876x2136 (1.81461)
     // everywhere else. Handled at draw time, never by re-encoding.
     width: 3856,
@@ -327,8 +319,8 @@ export const SEGMENTS: Segment[] = [
     frames: 121,
     mediaFrames: 121,
     offsetFrames: 0,
-    globalStart: 16.000001 + S1_DELTA,
-    globalEnd: 21.041668 + S1_DELTA,
+    globalStart: 17.125001,
+    globalEnd: 22.166668,
     width: 3876,
     height: 2136,
   },
@@ -342,34 +334,42 @@ export const SEGMENTS: Segment[] = [
     frames: 193,
     mediaFrames: 193,
     offsetFrames: 0,
-    globalStart: 21.041668 + S1_DELTA,
-    globalEnd: 29.083335 + S1_DELTA,
+    globalStart: 22.166668,
+    globalEnd: 30.208335,
     width: 3876,
     height: 2136,
   },
 ];
 
-/** 698 usable frames: 701 delivered minus the 3 skipped at the head of scene 01. */
-export const GLOBAL_DURATION = s1v2 ? 30.208335 : 29.083335;
-export const GLOBAL_FRAMES = s1v2 ? 725 : 698;
+/** 725 frames: 193 + 97 + 121 + 121 + 193, nothing skipped. */
+export const GLOBAL_DURATION = 30.208335;
+export const GLOBAL_FRAMES = 725;
 
 /** Frame index at which each segment starts on the global timeline. */
-export const SEGMENT_START_FRAME = s1v2 ? [0, 193, 290, 411, 532] : [0, 166, 263, 384, 505];
+export const SEGMENT_START_FRAME = [0, 193, 290, 411, 532];
 
 /**
- * Overlays as AUTHORED against the original footage, before the intro offset.
+ * Overlays as AUTHORED against the footage, before the intro offset.
  * Kept in these coordinates on purpose: the local times in the comments trace
  * back to the per-segment frame analysis, and staying in that frame of
- * reference is what keeps them checkable. The 125 ms shift is applied once,
- * below, so every caption keeps its position relative to its own scene.
+ * reference is what keeps them checkable. The offset is applied once, below,
+ * so every caption keeps its position relative to its own scene.
  */
 const AUTHORED_OVERLAYS: Overlay[] = [
   {
-    // seg1 local 3.50–7.00 — projector unmistakable from 3.25s to the last frame
+    /**
+     * Moved into segment 2 with the v2 opening.
+     *
+     * Scene 01 used to travel from the facade into the living room, so the
+     * projector was on screen for its second half and the card ran there. The
+     * v2 opening stays outside the house — no equipment is visible in it at
+     * all — and the projector now first appears at the segment-02 cut, mounted
+     * on the ceiling from that segment's frame 0. The card follows the hardware.
+     */
     id: "fachada-projecao",
     kind: "equipment",
-    globalStart: 3.5,
-    globalEnd: 7.0,
+    globalStart: 8.141667,
+    globalEnd: 10.341667,
     eyebrow: "SIM2",
     equipment: "SIM2",
     title: "Projeção cinematográfica",
@@ -381,18 +381,18 @@ const AUTHORED_OVERLAYS: Overlay[] = [
   },
   {
     /**
-     * Starts inside scene 01, while the projector card is still up.
+     * Starts a second after the SIM2 card, while it is still up.
      *
-     * The towers are already unmistakable in the wide shot at the end of scene
-     * 01, so waiting for the cut wasted the moment the hardware is clearest.
      * Deliberately overlapping SIM2 by about a second: the two cards sit in
      * opposite corners — top-right and bottom-left — so they read as one system
      * being described rather than two labels fighting for the same space.
+     * Unlike the v1 timing, it can no longer lead the cut: the towers are not
+     * in frame until segment 2 begins.
      */
     id: "living-bw-1",
     kind: "equipment",
-    globalStart: 6.0,
-    globalEnd: 9.341667,
+    globalStart: 9.241667,
+    globalEnd: 11.341667,
     eyebrow: "Bowers & Wilkins",
     equipment: "Bowers & Wilkins",
     title: "Referência em áudio high-end",
@@ -405,11 +405,11 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     position: "bottom-left",
   },
   {
-    // seg2 local 2.30–4.041667
+    // seg2 local 3.30 → seg3 local 1.00
     id: "living-bw-2",
     kind: "equipment",
-    globalStart: 9.341667,
-    globalEnd: 11.083334,
+    globalStart: 11.341667,
+    globalEnd: 13.083334,
     eyebrow: "Bowers & Wilkins",
     equipment: "Bowers & Wilkins",
     title: "Engenharia a serviço do som",
@@ -422,8 +422,8 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     // seg3 local 1.60–3.50
     id: "s110-1",
     kind: "narrative",
-    globalStart: 12.683334,
-    globalEnd: 14.583334,
+    globalStart: 13.683334,
+    globalEnd: 15.583334,
     eyebrow: "Automação integrada",
     title: "Um único ponto de controle",
     description:
@@ -436,8 +436,8 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     // seg3 local 3.50–5.041667
     id: "s110-2",
     kind: "narrative",
-    globalStart: 14.583334,
-    globalEnd: 16.125001,
+    globalStart: 15.583334,
+    globalEnd: 17.125001,
     eyebrow: "Display S110",
     title: "Tecnologia que desaparece na arquitetura",
     description:
@@ -450,8 +450,8 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     // seg4 local 0.00–1.95 — atravessa a fronteira de propósito
     id: "s110-3",
     kind: "narrative",
-    globalStart: 16.125001,
-    globalEnd: 18.075001,
+    globalStart: 17.125001,
+    globalEnd: 19.075001,
     eyebrow: "Cenas personalizadas",
     title: "Um toque muda o ambiente",
     description:
@@ -464,8 +464,8 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     // seg4 local 3.66–5.04 + seg5 local 0–1.32
     id: "gourmet-iluminacao",
     kind: "equipment",
-    globalStart: 19.785001,
-    globalEnd: 22.485001,
+    globalStart: 20.785001,
+    globalEnd: 23.485001,
     eyebrow: "Controle de iluminação",
     equipment: "Controle de iluminação",
     title: "Iluminação arquitetural",
@@ -478,8 +478,8 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     // seg5 local 1.62–4.72
     id: "gourmet-cortinas",
     kind: "equipment",
-    globalStart: 22.785001,
-    globalEnd: 25.885001,
+    globalStart: 23.785001,
+    globalEnd: 26.885001,
     eyebrow: "Automação de cortinas",
     equipment: "Automação de cortinas",
     title: "Cortinas automatizadas",
@@ -494,24 +494,12 @@ const AUTHORED_OVERLAYS: Overlay[] = [
  * Every caption moves earlier by exactly the intro offset.
  *
  * A single uniform shift is the correct transform, not a special case for
- * scene 01: each scene's start moved by the same 125 ms, so subtracting it once
- * leaves every caption at the identical moment of its own footage.
+ * scene 01: each scene's start moves by the same amount, so subtracting it once
+ * leaves every caption at the identical moment of its own footage. The offset
+ * is 0 for the current master; the transform stays so that reinstating it is a
+ * one-line change instead of a re-timing pass over every caption.
  */
-/**
- * v2 test mode: the SIM2 card is dropped (its projector belongs to the old
- * scene 01), the first B&W card is pinned to the scene-02 cut where the towers
- * actually enter frame, and everything else slides with the footage it was
- * authored against.
- */
-const ACTIVE_OVERLAYS: Overlay[] = s1v2
-  ? AUTHORED_OVERLAYS.filter((o) => o.id !== "fachada-projecao").map((o) =>
-      o.id === "living-bw-1"
-        ? { ...o, globalStart: 8.141667, globalEnd: 11.483334 }
-        : { ...o, globalStart: o.globalStart + S1_DELTA, globalEnd: o.globalEnd + S1_DELTA },
-    )
-  : AUTHORED_OVERLAYS;
-
-export const OVERLAYS: Overlay[] = ACTIVE_OVERLAYS.map((o) => ({
+export const OVERLAYS: Overlay[] = AUTHORED_OVERLAYS.map((o) => ({
   ...o,
   globalStart: +(o.globalStart - INTRO_OFFSET).toFixed(6),
   globalEnd: +(o.globalEnd - INTRO_OFFSET).toFixed(6),

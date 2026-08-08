@@ -207,56 +207,55 @@ const mediaFor = (scene: string) =>
 /**
  * The five scenes. Nothing is merged, cropped, scaled or re-timed.
  *
- * What IS served is a GOP-6 re-encode (see mediaFor above) of a remux of the
- * delivered master. The remux was `-c copy`, container only, tagged BT.709
- * **tv/limited**; the re-encode changes keyframe spacing and nothing else, and
- * its predecessors are all still on disk for A/B.
+ * THE WHOLE SET IS v3 as of 2026-08-08 — the mixed v1/v2 era is over, and with
+ * it the house discontinuity between scene 01 and the rest: every scene now
+ * shows the same architecture. Each was generated on Higgsfield at 1080p and
+ * upscaled to 3840x2160 (ByteDance, `aigc` preset, 24 fps), which preserves the
+ * frame count exactly — no interpolation, no re-timing. The upscaled masters
+ * live in media-comparison/source-archive/v3-masters/; what is served is the
+ * GOP-6 re-encode of those, straight off the master with no remux step and no
+ * filter chain (x264 slow, CRF 20, keyint 6, closed GOP), tagged BT.709
+ * **tv/limited**.
  *
- * SCENE 01 IS THE EXCEPTION, replaced 2026-08-07 by a new Higgsfield/Seedance
- * 2.0 take: an 8s exterior approach at 3840x2160, generated between two
- * approved stills so its last frame lands on the entrance the journey continues
- * from. It arrives as HEVC 10-bit already tagged bt709/tv, so there is no remux
- * step for it — the GOP-6 encode is taken straight off the master with the same
- * parameters as the rest of the set (x264 slow, CRF 16, keyint 6, closed GOP,
- * no filter chain). Its poster is cut from that GOP-6 file rather than the
- * master, which is what makes the poster→video handover flash-free: measured
- * mean luma 38 on both. The superseded v1 scene 01 — video, reverse and poster
- * — is archived in media-comparison/source-archive/v1-scene-01/.
+ * The upscale was measured against a native Seedance 2.0 4K take of the same
+ * shot: the native master holds slightly more organic micro-texture at 100%
+ * zoom, and the two are indistinguishable at the size the canvas actually
+ * draws. The cost difference decided it — 0.64 credits per scene against 176.
+ *
+ * PLAYBACK ORDER IS NOT SOURCE ORDER. The delivered files 003 and 004 are
+ * swapped with respect to continuity, and the boundary measurement is
+ * unambiguous — PSNR between one scene's last frame and the next one's first:
+ *
+ *   01 -> 02  26.5 dB      02 -> 03  12.4 dB
+ *   02 -> 04  36.8 dB      03 -> 04  12.0 dB
+ *   04 -> 03  28.7 dB      04 -> 05  12.3 dB
+ *   03 -> 05  22.5 dB
+ *
+ * Unrelated framings all sit at 10-13 dB, so the chain 01 -> 02 -> 04 -> 03 ->
+ * 05 is the one the shots were generated for: each was made between two stills,
+ * so a scene's last frame IS the next one's first. The files are therefore
+ * deployed in PLAYBACK order — source 004 is served as scene-03, source 003 as
+ * scene-04 — because every other tool in this repo reads `scene-0X` as "the Xth
+ * segment" (verify-reverse.mjs, verify-timeline.mjs, SEGMENT_START_FRAME). The
+ * source-order originals keep their own numbering in v3-masters/.
+ *
+ * What each segment now travels through, which is what the overlays are timed
+ * against: 01 facade -> entrance. 02 entrance -> living -> home theatre, with
+ * the projector and the B&W towers arriving in its last third. 03 home theatre
+ * -> S110 display. 04 S110 -> gourmet. 05 gourmet -> curtains open -> skyline.
+ *
+ * The superseded sets are archived outside public/ so Vite does not copy them:
+ * v1-scene-01/, v2-scene-01/ and v1-scenes-02-05/ under source-archive/.
  *
  * Note for `?media=original`: the remux set it reaches for is not present in
- * this checkout — media-comparison/source-archive/ holds only v1-scene-01/ —
- * so that flag currently resolves to nothing for every scene. It is dev-only
- * and compiled out of builds, so this costs production nothing.
+ * this checkout, so that flag resolves to nothing for every scene. It is
+ * dev-only and compiled out of builds, so this costs production nothing.
  *
  * The masters ship with no colour metadata whatsoever: no VUI
  * video_signal_type, no `colr` box. Every player therefore falls back to
  * limited range — VLC, QuickTime, the Higgsfield preview, Chrome. That default
  * IS the look the client reviewed and approved, so the tag makes it explicit
- * rather than changing it. Verified in Chrome: the tv remux and the untagged
- * master render byte-identically (same SHA-256 on the captured frame).
- *
- * A `pc/full` set also exists (`scene-0X-4k-bt709-full.mp4`) and was measured
- * side by side. Technically the coded luma does run 3..250, i.e. the content
- * uses headroom, which argues for full range — but decoding it that way lifts
- * the picture to a flatter curve nobody had signed off on. Limited costs
- * ~0.8% of pixels to clipping and buys the contrast the scenes were graded
- * around. That is a look decision, taken deliberately, not a defect.
- *
- * Both REMUX sets are bit-identical to their master on the H.264 elementary
- * stream and on the decoded frames; only the container differs, by a constant
- * 173 bytes. The GOP-6 files are re-encoded and therefore not bit-identical —
- * they are measured instead, see mediaFor. Re-check the remuxes with:
- *   node media-comparison/scene01-fidelity/tools/verify-scenes.mjs
- *
- *   scene  elementary MD5 (master == tv == full)
- *   01     f98db8eb5e9687724cfb989897f2001d   ← v1, now archived; no longer served
- *   02     db33fef3206a60ec2251f10a6f8a729a
- *   03     a6a9cfcafde02ff8fb6dc3c56285ce96
- *   04     198dda002056a5c4d9de33513931ca9f
- *   05     7d13bf1021491306fe49534cf09ea00a
- *
- * The untagged masters are archived in media-comparison/source-archive/masters/,
- * outside public/ so Vite does not copy them into the bundle.
+ * rather than changing it.
  */
 export const SEGMENTS: Segment[] = [
   {
@@ -272,8 +271,6 @@ export const SEGMENTS: Segment[] = [
     offsetFrames: INTRO_OFFSET_FRAMES,
     globalStart: 0,
     globalEnd: 8.041667,
-    // 3840x2160 — the v2 opening is exact 16:9, unlike the 3876x2136 of the
-    // scenes it feeds into. Handled at draw time, never by re-encoding.
     width: 3840,
     height: 2160,
   },
@@ -283,14 +280,14 @@ export const SEGMENTS: Segment[] = [
     label: "Living",
     src: mediaFor("02"),
     reverseSrc: reverseMediaFor("02"),
-    duration: 4.041667,
-    frames: 97,
-    mediaFrames: 97,
+    duration: 10.041667,
+    frames: 241,
+    mediaFrames: 241,
     offsetFrames: 0,
     globalStart: 8.041667,
-    globalEnd: 12.083334,
-    width: 3876,
-    height: 2136,
+    globalEnd: 18.083334,
+    width: 3840,
+    height: 2160,
   },
   {
     id: "s110",
@@ -298,16 +295,14 @@ export const SEGMENTS: Segment[] = [
     label: "Display S110",
     src: mediaFor("03"),
     reverseSrc: reverseMediaFor("03"),
-    duration: 5.041667,
-    frames: 121,
-    mediaFrames: 121,
+    duration: 8.041667,
+    frames: 193,
+    mediaFrames: 193,
     offsetFrames: 0,
-    globalStart: 12.083334,
-    globalEnd: 17.125001,
-    // The odd one out: 3856x2148 (AR 1.79516) against 3876x2136 (1.81461)
-    // everywhere else. Handled at draw time, never by re-encoding.
-    width: 3856,
-    height: 2148,
+    globalStart: 18.083334,
+    globalEnd: 26.125001,
+    width: 3840,
+    height: 2160,
   },
   {
     id: "gourmet",
@@ -315,14 +310,14 @@ export const SEGMENTS: Segment[] = [
     label: "Área gourmet",
     src: mediaFor("04"),
     reverseSrc: reverseMediaFor("04"),
-    duration: 5.041667,
-    frames: 121,
-    mediaFrames: 121,
+    duration: 8.041667,
+    frames: 193,
+    mediaFrames: 193,
     offsetFrames: 0,
-    globalStart: 17.125001,
-    globalEnd: 22.166668,
-    width: 3876,
-    height: 2136,
+    globalStart: 26.125001,
+    globalEnd: 34.166668,
+    width: 3840,
+    height: 2160,
   },
   {
     id: "skyline",
@@ -334,19 +329,19 @@ export const SEGMENTS: Segment[] = [
     frames: 193,
     mediaFrames: 193,
     offsetFrames: 0,
-    globalStart: 22.166668,
-    globalEnd: 30.208335,
-    width: 3876,
-    height: 2136,
+    globalStart: 34.166668,
+    globalEnd: 42.208335,
+    width: 3840,
+    height: 2160,
   },
 ];
 
-/** 725 frames: 193 + 97 + 121 + 121 + 193, nothing skipped. */
-export const GLOBAL_DURATION = 30.208335;
-export const GLOBAL_FRAMES = 725;
+/** 1013 frames: 193 + 241 + 193 + 193 + 193, nothing skipped. */
+export const GLOBAL_DURATION = 42.208335;
+export const GLOBAL_FRAMES = 1013;
 
 /** Frame index at which each segment starts on the global timeline. */
-export const SEGMENT_START_FRAME = [0, 193, 290, 411, 532];
+export const SEGMENT_START_FRAME = [0, 193, 434, 627, 820];
 
 /**
  * Overlays as AUTHORED against the footage, before the intro offset.
@@ -358,18 +353,19 @@ export const SEGMENT_START_FRAME = [0, 193, 290, 411, 532];
 const AUTHORED_OVERLAYS: Overlay[] = [
   {
     /**
-     * Moved into segment 2 with the v2 opening.
+     * Late in segment 2, not at its cut.
      *
-     * Scene 01 used to travel from the facade into the living room, so the
-     * projector was on screen for its second half and the card ran there. The
-     * v2 opening stays outside the house — no equipment is visible in it at
-     * all — and the projector now first appears at the segment-02 cut, mounted
-     * on the ceiling from that segment's frame 0. The card follows the hardware.
+     * The card has followed the hardware through two re-cuts now. Segment 02 no
+     * longer opens inside the house: it starts on the entrance and spends its
+     * first half getting there, so the projector is not on the ceiling until
+     * roughly local 6 s, when the camera is finally inside the theatre. Placing
+     * the card any earlier would describe equipment the viewer cannot see.
      */
     id: "fachada-projecao",
     kind: "equipment",
-    globalStart: 8.141667,
-    globalEnd: 10.341667,
+    // seg2 local 6.20–8.40
+    globalStart: 14.241667,
+    globalEnd: 16.441667,
     eyebrow: "SIM2",
     equipment: "SIM2",
     title: "Projeção cinematográfica",
@@ -385,14 +381,15 @@ const AUTHORED_OVERLAYS: Overlay[] = [
      *
      * Deliberately overlapping SIM2 by about a second: the two cards sit in
      * opposite corners — top-right and bottom-left — so they read as one system
-     * being described rather than two labels fighting for the same space.
-     * Unlike the v1 timing, it can no longer lead the cut: the towers are not
-     * in frame until segment 2 begins.
+     * being described rather than two labels fighting for the same space. The
+     * towers enter frame a beat after the projector does, so the offset that
+     * produces the overlap is also the honest order of what appears.
      */
     id: "living-bw-1",
     kind: "equipment",
-    globalStart: 9.241667,
-    globalEnd: 11.341667,
+    // seg2 local 7.30–9.40
+    globalStart: 15.341667,
+    globalEnd: 17.441667,
     eyebrow: "Bowers & Wilkins",
     equipment: "Bowers & Wilkins",
     title: "Referência em áudio high-end",
@@ -405,11 +402,12 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     position: "bottom-left",
   },
   {
-    // seg2 local 3.30 → seg3 local 1.00
+    // seg2 local 9.40 → seg3 local 1.40. Crosses the cut on purpose: the
+    // theatre is the same room on both sides of it, so the card carries over.
     id: "living-bw-2",
     kind: "equipment",
-    globalStart: 11.341667,
-    globalEnd: 13.083334,
+    globalStart: 17.441667,
+    globalEnd: 19.483334,
     eyebrow: "Bowers & Wilkins",
     equipment: "Bowers & Wilkins",
     title: "Engenharia a serviço do som",
@@ -419,11 +417,13 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     position: "bottom-right",
   },
   {
-    // seg3 local 1.60–3.50
+    // seg3 local 4.60–6.50, once the camera has left the screen and the wall
+    // panel is what the frame is about. The gap before it is the travelling
+    // shot across the wood wall, deliberately uncaptioned.
     id: "s110-1",
     kind: "narrative",
-    globalStart: 13.683334,
-    globalEnd: 15.583334,
+    globalStart: 22.683334,
+    globalEnd: 24.583334,
     eyebrow: "Automação integrada",
     title: "Um único ponto de controle",
     description:
@@ -433,11 +433,11 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     position: "bottom-left",
   },
   {
-    // seg3 local 3.50–5.041667
+    // seg3 local 6.50–8.041667, running out on the S110 close-up that ends it.
     id: "s110-2",
     kind: "narrative",
-    globalStart: 15.583334,
-    globalEnd: 17.125001,
+    globalStart: 24.583334,
+    globalEnd: 26.125001,
     eyebrow: "Display S110",
     title: "Tecnologia que desaparece na arquitetura",
     description:
@@ -447,11 +447,12 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     position: "bottom-left",
   },
   {
-    // seg4 local 0.00–1.95 — atravessa a fronteira de propósito
+    // seg4 local 0.00–1.95 — atravessa a fronteira de propósito: o display
+    // fecha a cena 3 e abre a 4, então o card não vê corte nenhum.
     id: "s110-3",
     kind: "narrative",
-    globalStart: 17.125001,
-    globalEnd: 19.075001,
+    globalStart: 26.125001,
+    globalEnd: 28.075001,
     eyebrow: "Cenas personalizadas",
     title: "Um toque muda o ambiente",
     description:
@@ -459,13 +460,14 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     descriptionMobile: "O sistema coordena os equipamentos para preparar cada espaço.",
     position: "bottom-left",
   },
-  // travessia pelo display: 18.08 → 19.65, sem cards
+  // travessia do display para a cozinha: 28.08 → 30.02, sem cards
   {
-    // seg4 local 3.66–5.04 + seg5 local 0–1.32
+    // seg4 local 3.90–6.60, com a marcenaria, a sanca e as fitas de LED já
+    // abertas no quadro — que é exatamente o que o card descreve.
     id: "gourmet-iluminacao",
     kind: "equipment",
-    globalStart: 20.785001,
-    globalEnd: 23.485001,
+    globalStart: 30.025001,
+    globalEnd: 32.725001,
     eyebrow: "Controle de iluminação",
     equipment: "Controle de iluminação",
     title: "Iluminação arquitetural",
@@ -475,11 +477,12 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     position: "bottom-right",
   },
   {
-    // seg5 local 1.62–4.72
+    // seg5 local 0.80–4.60, acompanhando a abertura das cortinas de ponta a
+    // ponta: elas começam fechadas e terminam liberando o skyline.
     id: "gourmet-cortinas",
     kind: "equipment",
-    globalStart: 23.785001,
-    globalEnd: 26.885001,
+    globalStart: 34.966668,
+    globalEnd: 38.766668,
     eyebrow: "Automação de cortinas",
     equipment: "Automação de cortinas",
     title: "Cortinas automatizadas",
@@ -487,7 +490,7 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     descriptionMobile: "A abertura acompanha a cena e entrega a vista no tempo certo.",
     position: "bottom-right",
   },
-  // 25.9 → 29.2: skyline limpo, depois o encerramento de marca
+  // 38.77 → 42.21: skyline limpo, depois o encerramento de marca
 ];
 
 /**

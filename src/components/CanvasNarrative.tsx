@@ -19,6 +19,7 @@ import {
   reverseFrameToForwardFrame,
 } from "../content/timeline";
 import { OverlayCard } from "./OverlayCard";
+import { SystemRail } from "./SystemRail";
 
 type CanvasNarrativeProps = {
   id?: string;
@@ -1078,6 +1079,10 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
       (window as unknown as Record<string, unknown>).__cnHandover = stats;
     }
 
+    // Feeds the SystemRail: one event per PRESENTED integer frame, never per
+    // tick, so listeners pay nothing while the playhead is at rest.
+    let lastEmittedGf = -1;
+
     const tick = () => {
       const now = performance.now();
       const dt = lastTsRef.current ? Math.min((now - lastTsRef.current) / 1000, 0.05) : 0.016;
@@ -1142,6 +1147,10 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
       }
 
       const gf = Math.max(0, Math.min(GLOBAL_FRAMES - 1, Math.round(renderFrameRef.current)));
+      if (gf !== lastEmittedGf) {
+        lastEmittedGf = gf;
+        window.dispatchEvent(new CustomEvent("sonare:frame", { detail: { frame: gf } }));
+      }
       const { index, localFrame } = locateFrame(gf);
       const rep = useReverseMedia && direction < 0 ? REP_REV : REP_FWD;
       const activeTrack = trackOf(index, rep);
@@ -1435,6 +1444,8 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
     gsap.ticker.lagSmoothing(0);
     window.addEventListener("resize", resize);
 
+    let journeyTrigger: ScrollTrigger | null = null;
+
     const ctxGsap = gsap.context(() => {
       const tl = gsap.timeline({
         defaults: { ease: "none" },
@@ -1449,6 +1460,7 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
         },
       });
       tl.to({}, { duration: total }, 0);
+      journeyTrigger = tl.scrollTrigger ?? null;
 
       // The scroll only ever records intent, in frames.
       tl.eventCallback("onUpdate", () => {
@@ -1497,6 +1509,23 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
         );
       }
     }, section);
+
+    /**
+     * Chapter navigation from the SystemRail. The rail speaks in frames; this
+     * translates to the scroll position that produces that frame and lets the
+     * scrub pipeline do the rest, so a click travels through exactly the same
+     * path as a gesture — damping, direction logic, handovers and all.
+     */
+    const onSeek = (event: Event) => {
+      const st = journeyTrigger;
+      if (!st) return;
+      const frame = (event as CustomEvent<{ frame: number }>).detail.frame;
+      const clamped = Math.max(0, Math.min(GLOBAL_FRAMES - 1, frame));
+      const seconds = (clamped / (GLOBAL_FRAMES - 1)) * GLOBAL_DURATION;
+      const y = st.start + (seconds / total) * (st.end - st.start);
+      gsap.to(window, { scrollTo: y, duration: 1.2, ease: "power2.inOut", overwrite: "auto" });
+    };
+    window.addEventListener("sonare:seek", onSeek as EventListener);
 
     /**
      * Handover gate for the opening frame.
@@ -1571,6 +1600,7 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
         }
       }
       delete document.body.dataset.heroSource;
+      window.removeEventListener("sonare:seek", onSeek as EventListener);
       gsap.ticker.remove(tick);
       seekedHandlers.forEach((e) => e && e.v.removeEventListener("seeked", e.h));
       devListeners.forEach((e) => e && e.v.removeEventListener(e.type, e.h));
@@ -1693,18 +1723,7 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
         </div>
       )}
 
-      <div
-        aria-hidden="true"
-        className="absolute right-6 top-1/2 z-40 hidden -translate-y-1/2 items-center gap-4 lg:flex"
-      >
-        <div className="relative h-36 w-px overflow-hidden bg-white/15">
-          <div
-            ref={railFillRef}
-            className="absolute inset-x-0 top-0 h-full origin-top bg-sonare-gold"
-            style={{ transform: "scaleY(0)" }}
-          />
-        </div>
-      </div>
+      <SystemRail fillRef={railFillRef} />
     </section>
   );
 }

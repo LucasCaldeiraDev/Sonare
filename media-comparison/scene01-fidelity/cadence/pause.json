@@ -1,0 +1,1250 @@
+{
+  "out": {
+    "base": {
+      "desce-1x": {
+        "unique": 74,
+        "fps": 11.9,
+        "p50": 16.8,
+        "p95": 250.2,
+        "p99": 250.4,
+        "max": 250.4,
+        "over50": 25,
+        "over75": 24,
+        "over100": 23,
+        "over150": 22,
+        "gapsOver75": 24,
+        "pauseLinked": 22,
+        "nearTargetLinked": 22,
+        "bigNear": 22,
+        "plays": 25,
+        "pauses": 24,
+        "cycles": 25,
+        "pausedWhileMoving": 24,
+        "byReason": {
+          "gap-forward": 25,
+          "near-target": 24,
+          "scroll-settled": 0
+        },
+        "pauseSpanP50": 100.2,
+        "pauseSpanP95": 116.7,
+        "lagP50": 28,
+        "lagP95": 54.5,
+        "stillPlaying": 1,
+        "draws": 364,
+        "redraws": 290,
+        "switches": 0,
+        "rateChanges": 118,
+        "seeks": 12,
+        "drawMsP95": 0.2,
+        "longTasks": 0,
+        "heapMB": 22.6,
+        "detail": [
+          {
+            "start": 256,
+            "ms": 166.7,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 422,
+            "ms": 150.3,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 573,
+            "ms": 166.8,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 740,
+            "ms": 183.4,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 923,
+            "ms": 217,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 1140,
+            "ms": 250.3,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 1390,
+            "ms": 217,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 1607,
+            "ms": 249.9,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 1857,
+            "ms": 217,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 2074,
+            "ms": 217,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 2291,
+            "ms": 250.2,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 2541,
+            "ms": 216.7,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 2758,
+            "ms": 250.4,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward pause:near-target",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 3008,
+            "ms": 233.5,
+            "before": "pause:near-target",
+            "inside": "play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 3242,
+            "ms": 217,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 3459,
+            "ms": 233.5,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 3692,
+            "ms": 233.8,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 3926,
+            "ms": 233.2,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 4159,
+            "ms": 250.3,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 4410,
+            "ms": 216.9,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 4627,
+            "ms": 233.6,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 4860,
+            "ms": 217,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 5646,
+            "ms": 115.5,
+            "before": "play:gap-forward",
+            "inside": "—",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 5811,
+            "ms": 83.5,
+            "before": "play:gap-forward",
+            "inside": "—",
+            "seek": false,
+            "track": 0
+          }
+        ]
+      },
+      "sobe-1x": {
+        "unique": 65,
+        "fps": 10.5,
+        "p50": 33.4,
+        "p95": 233.8,
+        "p99": 250.3,
+        "max": 250.3,
+        "over50": 23,
+        "over75": 22,
+        "over100": 22,
+        "over150": 22,
+        "gapsOver75": 22,
+        "pauseLinked": 21,
+        "nearTargetLinked": 21,
+        "bigNear": 21,
+        "plays": 23,
+        "pauses": 22,
+        "cycles": 22,
+        "pausedWhileMoving": 22,
+        "byReason": {
+          "gap-forward": 23,
+          "near-target": 22,
+          "scroll-settled": 0
+        },
+        "pauseSpanP50": 100.1,
+        "pauseSpanP95": 116.8,
+        "lagP50": 26,
+        "lagP95": 53.9,
+        "stillPlaying": 1,
+        "draws": 371,
+        "redraws": 306,
+        "switches": 1,
+        "rateChanges": 111,
+        "seeks": 11,
+        "drawMsP95": 0.2,
+        "longTasks": 0,
+        "heapMB": 23.2,
+        "detail": [
+          {
+            "start": 216,
+            "ms": 200.1,
+            "before": "—",
+            "inside": "play:gap-forward",
+            "seek": false,
+            "track": null
+          },
+          {
+            "start": 416,
+            "ms": 183.4,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 600,
+            "ms": 166.8,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 767,
+            "ms": 183.5,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 950,
+            "ms": 233.7,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 1184,
+            "ms": 233.6,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 1417,
+            "ms": 233.6,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 1651,
+            "ms": 216.9,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 1868,
+            "ms": 233.4,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 2101,
+            "ms": 233.5,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 2335,
+            "ms": 250.3,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 2585,
+            "ms": 216.9,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 2802,
+            "ms": 233.8,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 3036,
+            "ms": 250,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 3286,
+            "ms": 216.9,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 3503,
+            "ms": 250.2,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 3753,
+            "ms": 217.1,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 3970,
+            "ms": 233.4,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 4203,
+            "ms": 233.8,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 4437,
+            "ms": 233.4,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 4671,
+            "ms": 233.5,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 4904,
+            "ms": 216.8,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          }
+        ]
+      },
+      "reversao-cena": {
+        "unique": 24,
+        "fps": 5.5,
+        "p50": 216.9,
+        "p95": 250.3,
+        "p99": 350.4,
+        "max": 350.4,
+        "over50": 19,
+        "over75": 16,
+        "over100": 16,
+        "over150": 15,
+        "gapsOver75": 16,
+        "pauseLinked": 16,
+        "nearTargetLinked": 14,
+        "bigNear": 13,
+        "plays": 18,
+        "pauses": 19,
+        "cycles": 18,
+        "pausedWhileMoving": 16,
+        "byReason": {
+          "gap-forward": 18,
+          "near-target": 16,
+          "scroll-settled": 3
+        },
+        "pauseSpanP50": 100.1,
+        "pauseSpanP95": 4487.8,
+        "lagP50": 0.5,
+        "lagP95": 3.6,
+        "stillPlaying": 0,
+        "draws": 261,
+        "redraws": 237,
+        "switches": 1,
+        "rateChanges": 91,
+        "seeks": 4,
+        "drawMsP95": 0.2,
+        "longTasks": 0,
+        "heapMB": 22.8,
+        "detail": [
+          {
+            "start": 116,
+            "ms": 200.5,
+            "before": "—",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": null
+          },
+          {
+            "start": 317,
+            "ms": 199.9,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 517,
+            "ms": 233.4,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 750,
+            "ms": 233.6,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 984,
+            "ms": 217.2,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 1201,
+            "ms": 233.2,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 1434,
+            "ms": 233.7,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 1668,
+            "ms": 233.5,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 1901,
+            "ms": 250.3,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 2152,
+            "ms": 233.6,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 2385,
+            "ms": 216.8,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 2602,
+            "ms": 233.7,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 2836,
+            "ms": 216.9,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 3053,
+            "ms": 233.6,
+            "before": "play:gap-forward",
+            "inside": "pause:scroll-settled",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 3603,
+            "ms": 116.7,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 3720,
+            "ms": 350.4,
+            "before": "play:gap-forward",
+            "inside": "pause:scroll-settled play:gap-forward",
+            "seek": false,
+            "track": 1
+          }
+        ]
+      }
+    },
+    "native": {
+      "desce-1x": {
+        "unique": 61,
+        "fps": 9.8,
+        "p50": 33.4,
+        "p95": 250.1,
+        "p99": 250.3,
+        "max": 250.3,
+        "over50": 25,
+        "over75": 25,
+        "over100": 24,
+        "over150": 23,
+        "gapsOver75": 25,
+        "pauseLinked": 22,
+        "nearTargetLinked": 22,
+        "bigNear": 22,
+        "plays": 24,
+        "pauses": 23,
+        "cycles": 24,
+        "pausedWhileMoving": 23,
+        "byReason": {
+          "gap-forward": 24,
+          "near-target": 23,
+          "scroll-settled": 0
+        },
+        "pauseSpanP50": 100.1,
+        "pauseSpanP95": 117,
+        "lagP50": 23,
+        "lagP95": 51.5,
+        "stillPlaying": 1,
+        "draws": 368,
+        "redraws": 307,
+        "switches": 0,
+        "rateChanges": 116,
+        "seeks": 12,
+        "drawMsP95": 0.1,
+        "longTasks": 0,
+        "heapMB": 24,
+        "detail": [
+          {
+            "start": 267,
+            "ms": 183.4,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 450,
+            "ms": 150.1,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 601,
+            "ms": 150.3,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 751,
+            "ms": 200.2,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 951,
+            "ms": 200.1,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 1151,
+            "ms": 233.7,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 1385,
+            "ms": 250.2,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 1635,
+            "ms": 233.4,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 1868,
+            "ms": 216.9,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 2085,
+            "ms": 233.8,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 2319,
+            "ms": 250.1,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward pause:near-target",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 2569,
+            "ms": 233.6,
+            "before": "pause:near-target",
+            "inside": "play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 2803,
+            "ms": 217.1,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 3020,
+            "ms": 233.3,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 3253,
+            "ms": 233.6,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 3487,
+            "ms": 233.5,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 3720,
+            "ms": 250.3,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 3971,
+            "ms": 216.8,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 4187,
+            "ms": 233.7,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 4421,
+            "ms": 233.5,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 4655,
+            "ms": 233.6,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 4888,
+            "ms": 216.9,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 5372,
+            "ms": 83.6,
+            "before": "play:gap-forward",
+            "inside": "—",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 5456,
+            "ms": 150.6,
+            "before": "play:gap-forward",
+            "inside": "—",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 5625,
+            "ms": 105.9,
+            "before": "play:gap-forward",
+            "inside": "—",
+            "seek": false,
+            "track": 0
+          }
+        ]
+      },
+      "sobe-1x": {
+        "unique": 58,
+        "fps": 9.4,
+        "p50": 33.4,
+        "p95": 267.1,
+        "p99": 533.9,
+        "max": 533.9,
+        "over50": 20,
+        "over75": 20,
+        "over100": 20,
+        "over150": 18,
+        "gapsOver75": 20,
+        "pauseLinked": 19,
+        "nearTargetLinked": 19,
+        "bigNear": 18,
+        "plays": 23,
+        "pauses": 22,
+        "cycles": 22,
+        "pausedWhileMoving": 22,
+        "byReason": {
+          "gap-forward": 23,
+          "near-target": 22,
+          "scroll-settled": 0
+        },
+        "pauseSpanP50": 100.1,
+        "pauseSpanP95": 116.8,
+        "lagP50": 23,
+        "lagP95": 53.5,
+        "stillPlaying": 1,
+        "draws": 371,
+        "redraws": 313,
+        "switches": 1,
+        "rateChanges": 112,
+        "seeks": 11,
+        "drawMsP95": 0.1,
+        "longTasks": 0,
+        "heapMB": 22.8,
+        "detail": [
+          {
+            "start": 250,
+            "ms": 133.7,
+            "before": "—",
+            "inside": "play:gap-forward",
+            "seek": false,
+            "track": null
+          },
+          {
+            "start": 384,
+            "ms": 200.3,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 584,
+            "ms": 166.5,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 751,
+            "ms": 200.2,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 951,
+            "ms": 200.4,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 1151,
+            "ms": 233.6,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 1385,
+            "ms": 233.4,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 1618,
+            "ms": 233.6,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 1852,
+            "ms": 233.6,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 2086,
+            "ms": 233.6,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 2319,
+            "ms": 250.2,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 2569,
+            "ms": 266.9,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward pause:near-target",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 2836,
+            "ms": 116.8,
+            "before": "pause:near-target",
+            "inside": "play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 2953,
+            "ms": 533.9,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 3487,
+            "ms": 233.7,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 3721,
+            "ms": 233.5,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 3954,
+            "ms": 233.7,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 4188,
+            "ms": 383.4,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 4605,
+            "ms": 267.1,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 4872,
+            "ms": 266.9,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          }
+        ]
+      },
+      "reversao-cena": {
+        "unique": 25,
+        "fps": 5.7,
+        "p50": 216.7,
+        "p95": 250.4,
+        "p99": 316.9,
+        "max": 316.9,
+        "over50": 19,
+        "over75": 18,
+        "over100": 16,
+        "over150": 15,
+        "gapsOver75": 18,
+        "pauseLinked": 17,
+        "nearTargetLinked": 15,
+        "bigNear": 13,
+        "plays": 18,
+        "pauses": 19,
+        "cycles": 18,
+        "pausedWhileMoving": 16,
+        "byReason": {
+          "gap-forward": 18,
+          "near-target": 16,
+          "scroll-settled": 3
+        },
+        "pauseSpanP50": 100,
+        "pauseSpanP95": 4470.8,
+        "lagP50": 0.5,
+        "lagP95": 3.3,
+        "stillPlaying": 0,
+        "draws": 262,
+        "redraws": 237,
+        "switches": 1,
+        "rateChanges": 92,
+        "seeks": 4,
+        "drawMsP95": 0.1,
+        "longTasks": 0,
+        "heapMB": 22.8,
+        "detail": [
+          {
+            "start": 100,
+            "ms": 233.4,
+            "before": "—",
+            "inside": "pause:scroll-settled play:gap-forward",
+            "seek": false,
+            "track": null
+          },
+          {
+            "start": 334,
+            "ms": 200.4,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 534,
+            "ms": 216.6,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 751,
+            "ms": 233.6,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 984,
+            "ms": 250.4,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 1235,
+            "ms": 233.6,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 1468,
+            "ms": 216.7,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 1685,
+            "ms": 233.6,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 1919,
+            "ms": 250.3,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 2169,
+            "ms": 233.4,
+            "before": "pause:near-target",
+            "inside": "play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 2402,
+            "ms": 217.1,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 2619,
+            "ms": 233.5,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 2853,
+            "ms": 217,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 3070,
+            "ms": 183.4,
+            "before": "play:gap-forward",
+            "inside": "pause:scroll-settled",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 3270,
+            "ms": 110.6,
+            "before": "pause:scroll-settled",
+            "inside": "play:gap-forward pause:near-target",
+            "seek": false,
+            "track": 0
+          },
+          {
+            "start": 3537,
+            "ms": 83.5,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 3620,
+            "ms": 99.9,
+            "before": "play:gap-forward",
+            "inside": "—",
+            "seek": false,
+            "track": 1
+          },
+          {
+            "start": 3720,
+            "ms": 316.9,
+            "before": "play:gap-forward",
+            "inside": "pause:near-target play:gap-forward",
+            "seek": false,
+            "track": 1
+          }
+        ]
+      }
+    }
+  },
+  "errors": [],
+  "bad": []
+}

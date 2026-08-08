@@ -1,0 +1,440 @@
+{
+  "4K48-gop12": {
+    "tMeta": 24,
+    "tFirst": 198,
+    "w": 3876,
+    "h": 2136,
+    "seekLat": [
+      120.7,
+      16.6,
+      16.6,
+      16.6,
+      33.4,
+      116.7,
+      16.8,
+      16.6,
+      33.4,
+      33.3,
+      16.7,
+      50,
+      33.3,
+      16.7,
+      33.3,
+      50,
+      104,
+      12.9,
+      16.7,
+      16.7,
+      50,
+      33.2,
+      33.4,
+      33.4
+    ],
+    "rateRows": [
+      {
+        "rate": 1,
+        "demand": 48,
+        "presented": 41.2,
+        "decoded": 48.5,
+        "dropped": 1,
+        "dropPct": 0.9,
+        "events": 0
+      },
+      {
+        "rate": 1.5,
+        "demand": 72,
+        "presented": 47.3,
+        "decoded": 72.7,
+        "dropped": 29,
+        "dropPct": 18.1,
+        "events": 0
+      },
+      {
+        "rate": 2,
+        "demand": 96,
+        "presented": 45.4,
+        "decoded": 97.3,
+        "dropped": 82,
+        "dropPct": 38.3,
+        "events": 0
+      },
+      {
+        "rate": 3,
+        "demand": 144,
+        "presented": 41.2,
+        "decoded": 145.8,
+        "dropped": 187,
+        "dropPct": 58.1,
+        "events": 1
+      }
+    ],
+    "events": 3,
+    "heapMB": 21.5,
+    "sizeMB": 32.5
+  },
+  "1440p48-gop12": {
+    "tMeta": 23,
+    "tFirst": 188,
+    "w": 2560,
+    "h": 1410,
+    "seekLat": [
+      39.5,
+      16.8,
+      16.5,
+      16.7,
+      16.7,
+      66.7,
+      16.7,
+      16.8,
+      16.5,
+      16.6,
+      16.7,
+      16.7,
+      33.4,
+      16.6,
+      16.7,
+      33.4,
+      16.7,
+      16.7,
+      16.6,
+      16.9,
+      33.2,
+      16.7,
+      16.7,
+      16.7
+    ],
+    "rateRows": [
+      {
+        "rate": 1,
+        "demand": 48,
+        "presented": 43.6,
+        "decoded": 48.2,
+        "dropped": 0,
+        "dropPct": 0,
+        "events": 0
+      },
+      {
+        "rate": 1.5,
+        "demand": 72,
+        "presented": 45.9,
+        "decoded": 72.7,
+        "dropped": 28,
+        "dropPct": 17.5,
+        "events": 0
+      },
+      {
+        "rate": 2,
+        "demand": 96,
+        "presented": 45.3,
+        "decoded": 97,
+        "dropped": 82,
+        "dropPct": 38.3,
+        "events": 0
+      },
+      {
+        "rate": 3,
+        "demand": 144,
+        "presented": 41.6,
+        "decoded": 145.5,
+        "dropped": 188,
+        "dropPct": 58.4,
+        "events": 1
+      }
+    ],
+    "events": 2,
+    "heapMB": 21.6,
+    "sizeMB": 17.3
+  },
+  "1440p48-gop6": {
+    "tMeta": 17,
+    "tFirst": 207,
+    "w": 2560,
+    "h": 1410,
+    "seekLat": [
+      32.7,
+      16.7,
+      16.6,
+      16.9,
+      16.5,
+      16.7,
+      50,
+      16.7,
+      16.8,
+      16.5,
+      16.7,
+      16.8,
+      16.6,
+      16.7,
+      16.7,
+      16.7,
+      16.7,
+      16.6,
+      16.6,
+      16.9,
+      16.6,
+      16.6,
+      16.8,
+      16.5
+    ],
+    "rateRows": [
+      {
+        "rate": 1,
+        "demand": 48,
+        "presented": 47.1,
+        "decoded": 48.5,
+        "dropped": 1,
+        "dropPct": 0.9,
+        "events": 0
+      },
+      {
+        "rate": 1.5,
+        "demand": 72,
+        "presented": 50.4,
+        "decoded": 72.7,
+        "dropped": 29,
+        "dropPct": 18.1,
+        "events": 0
+      },
+      {
+        "rate": 2,
+        "demand": 96,
+        "presented": 44.5,
+        "decoded": 97.3,
+        "dropped": 82,
+        "dropPct": 38.3,
+        "events": 0
+      },
+      {
+        "rate": 3,
+        "demand": 144,
+        "presented": 41.5,
+        "decoded": 145.3,
+        "dropped": 187,
+        "dropPct": 58.1,
+        "events": 1
+      }
+    ],
+    "events": 2,
+    "heapMB": 21.5,
+    "sizeMB": 21
+  },
+  "1080p48-gop12": {
+    "tMeta": 21,
+    "tFirst": 67,
+    "w": 1920,
+    "h": 1058,
+    "seekLat": [
+      67.3,
+      15,
+      15.8,
+      16.5,
+      16.7,
+      50,
+      16.8,
+      16.7,
+      17.9,
+      15.4,
+      16.9,
+      16.5,
+      16.6,
+      16.7,
+      16.7,
+      17.3,
+      16,
+      16.8,
+      16.6,
+      16.8,
+      17.1,
+      16.2,
+      16.7,
+      16.7
+    ],
+    "rateRows": [
+      {
+        "rate": 1,
+        "demand": 48,
+        "presented": 46.4,
+        "decoded": 48.6,
+        "dropped": 1,
+        "dropPct": 0.9,
+        "events": 0
+      },
+      {
+        "rate": 1.5,
+        "demand": 72,
+        "presented": 49.5,
+        "decoded": 72.7,
+        "dropped": 29,
+        "dropPct": 18.1,
+        "events": 0
+      },
+      {
+        "rate": 2,
+        "demand": 96,
+        "presented": 48.2,
+        "decoded": 96.4,
+        "dropped": 82,
+        "dropPct": 38.7,
+        "events": 0
+      },
+      {
+        "rate": 3,
+        "demand": 144,
+        "presented": 45,
+        "decoded": 145.4,
+        "dropped": 187,
+        "dropPct": 58.4,
+        "events": 1
+      }
+    ],
+    "events": 2,
+    "heapMB": 21.6,
+    "sizeMB": 11.1
+  },
+  "1080p48-gop6": {
+    "tMeta": 20,
+    "tFirst": 49,
+    "w": 1920,
+    "h": 1058,
+    "seekLat": [
+      95.5,
+      16.7,
+      16.6,
+      16.6,
+      33.4,
+      16.6,
+      16.7,
+      16.8,
+      16.6,
+      16.6,
+      16.9,
+      16.6,
+      16.9,
+      17.1,
+      16,
+      16.7,
+      16.7,
+      16.7,
+      16.6,
+      16.7,
+      16.8,
+      16.6,
+      16.7,
+      16.6
+    ],
+    "rateRows": [
+      {
+        "rate": 1,
+        "demand": 48,
+        "presented": 44.5,
+        "decoded": 48.6,
+        "dropped": 1,
+        "dropPct": 0.9,
+        "events": 0
+      },
+      {
+        "rate": 1.5,
+        "demand": 72,
+        "presented": 49.5,
+        "decoded": 72.3,
+        "dropped": 29,
+        "dropPct": 18.2,
+        "events": 0
+      },
+      {
+        "rate": 2,
+        "demand": 96,
+        "presented": 49.1,
+        "decoded": 97.2,
+        "dropped": 81,
+        "dropPct": 37.9,
+        "events": 0
+      },
+      {
+        "rate": 3,
+        "demand": 144,
+        "presented": 48.2,
+        "decoded": 146.3,
+        "dropped": 187,
+        "dropPct": 58.1,
+        "events": 1
+      }
+    ],
+    "events": 2,
+    "heapMB": 21.6,
+    "sizeMB": 13.7
+  },
+  "4K24-gop6": {
+    "tMeta": 17,
+    "tFirst": 156,
+    "w": 3876,
+    "h": 2136,
+    "seekLat": [
+      23.5,
+      16.7,
+      16.6,
+      16.7,
+      16.5,
+      150.1,
+      16.8,
+      16.6,
+      16.7,
+      16.6,
+      16.6,
+      33.4,
+      33.3,
+      33.3,
+      33.4,
+      33.4,
+      33.2,
+      33.5,
+      33.3,
+      33.3,
+      33.3,
+      33.4,
+      105.1,
+      11.6
+    ],
+    "rateRows": [
+      {
+        "rate": 1,
+        "demand": 24,
+        "presented": 24.5,
+        "decoded": 24.1,
+        "dropped": 0,
+        "dropPct": 0,
+        "events": 0
+      },
+      {
+        "rate": 1.5,
+        "demand": 36,
+        "presented": 35.4,
+        "decoded": 36.3,
+        "dropped": 1,
+        "dropPct": 1.3,
+        "events": 0
+      },
+      {
+        "rate": 2,
+        "demand": 48,
+        "presented": 45.4,
+        "decoded": 48.2,
+        "dropped": 1,
+        "dropPct": 0.9,
+        "events": 0
+      },
+      {
+        "rate": 3,
+        "demand": 72,
+        "presented": 45,
+        "decoded": 72.7,
+        "dropped": 28,
+        "dropPct": 17.5,
+        "events": 0
+      }
+    ],
+    "events": 1,
+    "heapMB": 21.5,
+    "sizeMB": 25.3
+  }
+}

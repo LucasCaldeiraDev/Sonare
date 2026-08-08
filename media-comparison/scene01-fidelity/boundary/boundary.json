@@ -1,0 +1,163 @@
+{
+  "out": {
+    "antes": {
+      "01to02-lento": {
+        "samples": 294,
+        "jolt": 17.634,
+        "joltP99": 3.872,
+        "reversals": 1,
+        "black": 0,
+        "tCross": 1229,
+        "postBoundaryFrames": 4
+      },
+      "01to02-rapido": {
+        "samples": 150,
+        "jolt": 24.77,
+        "joltP99": 9.795,
+        "reversals": 0,
+        "black": 0,
+        "tCross": 236,
+        "postBoundaryFrames": 23
+      },
+      "02to01-lento": {
+        "samples": 264,
+        "jolt": 16.622,
+        "joltP99": 1.553,
+        "reversals": 0,
+        "black": 0,
+        "tCross": 1371,
+        "postBoundaryFrames": 0
+      },
+      "02to01-rapido": {
+        "samples": 134,
+        "jolt": 16.622,
+        "joltP99": 5.03,
+        "reversals": 0,
+        "black": 0,
+        "tCross": 264,
+        "postBoundaryFrames": 4
+      },
+      "02to03-lento": {
+        "samples": 295,
+        "jolt": 3.883,
+        "joltP99": 1.252,
+        "reversals": 0,
+        "black": 0,
+        "tCross": 1204,
+        "postBoundaryFrames": 4
+      },
+      "02to03-rapido": {
+        "samples": 164,
+        "jolt": 3.508,
+        "joltP99": 1.413,
+        "reversals": 0,
+        "black": 0,
+        "tCross": 231,
+        "postBoundaryFrames": 20
+      },
+      "03to02-lento": {
+        "samples": 257,
+        "jolt": 7.628,
+        "joltP99": 1.313,
+        "reversals": 0,
+        "black": 0,
+        "tCross": 1396,
+        "postBoundaryFrames": 0
+      },
+      "03to02-rapido": {
+        "samples": 140,
+        "jolt": 7.952,
+        "joltP99": 1.908,
+        "reversals": 0,
+        "black": 0,
+        "tCross": 269,
+        "postBoundaryFrames": 7
+      }
+    },
+    "antes_hstats": {
+      "waits": 37,
+      "forced": 2,
+      "maxHoldMs": 52.19999980926514
+    },
+    "depois": {
+      "01to02-lento": {
+        "samples": 300,
+        "jolt": 17.597,
+        "joltP99": 3.962,
+        "reversals": 1,
+        "black": 0,
+        "tCross": 1229,
+        "postBoundaryFrames": 4
+      },
+      "01to02-rapido": {
+        "samples": 169,
+        "jolt": 9.749,
+        "joltP99": 4.133,
+        "reversals": 0,
+        "black": 0,
+        "tCross": 236,
+        "postBoundaryFrames": 23
+      },
+      "02to01-lento": {
+        "samples": 281,
+        "jolt": 13.556,
+        "joltP99": 1.502,
+        "reversals": 0,
+        "black": 0,
+        "tCross": 1371,
+        "postBoundaryFrames": 0
+      },
+      "02to01-rapido": {
+        "samples": 154,
+        "jolt": 12.774,
+        "joltP99": 2.309,
+        "reversals": 0,
+        "black": 0,
+        "tCross": 264,
+        "postBoundaryFrames": 11
+      },
+      "02to03-lento": {
+        "samples": 300,
+        "jolt": 3.93,
+        "joltP99": 0.994,
+        "reversals": 0,
+        "black": 0,
+        "tCross": 1204,
+        "postBoundaryFrames": 4
+      },
+      "02to03-rapido": {
+        "samples": 168,
+        "jolt": 3.891,
+        "joltP99": 1.412,
+        "reversals": 1,
+        "black": 0,
+        "tCross": 231,
+        "postBoundaryFrames": 23
+      },
+      "03to02-lento": {
+        "samples": 286,
+        "jolt": 5.366,
+        "joltP99": 2.253,
+        "reversals": 0,
+        "black": 0,
+        "tCross": 1396,
+        "postBoundaryFrames": 0
+      },
+      "03to02-rapido": {
+        "samples": 154,
+        "jolt": 4.003,
+        "joltP99": 2.97,
+        "reversals": 0,
+        "black": 0,
+        "tCross": 269,
+        "postBoundaryFrames": 12
+      }
+    },
+    "depois_hstats": {
+      "waits": 2,
+      "forced": 0,
+      "maxHoldMs": 16.799999952316284
+    }
+  },
+  "errors": []
+}

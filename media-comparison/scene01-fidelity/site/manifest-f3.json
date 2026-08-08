@@ -1,0 +1,157 @@
+{
+  "results": [
+    {
+      "viewport": "1920x1080-dpr1",
+      "state": "before-clean",
+      "file": "media-comparison\\scene01-fidelity\\site\\1920x1080-dpr1\\before-clean-f3.png",
+      "info": {
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-tv.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "readyState": 4,
+        "canvas": {
+          "w": 1920,
+          "h": 1080
+        },
+        "clientW": 1920,
+        "clientH": 1080,
+        "dpr": 1,
+        "heroSource": "video"
+      }
+    },
+    {
+      "viewport": "1920x1080-dpr1",
+      "state": "after-clean",
+      "file": "media-comparison\\scene01-fidelity\\site\\1920x1080-dpr1\\after-clean-f3.png",
+      "info": {
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-tv.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "readyState": 4,
+        "canvas": {
+          "w": 1920,
+          "h": 1080
+        },
+        "clientW": 1920,
+        "clientH": 1080,
+        "dpr": 1,
+        "heroSource": "video"
+      }
+    },
+    {
+      "viewport": "1920x1080-dpr1",
+      "state": "poster-only",
+      "file": "media-comparison\\scene01-fidelity\\site\\1920x1080-dpr1\\poster-only-f3.png",
+      "info": {
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-tv.mp4",
+        "videoWidth": 0,
+        "videoHeight": 0,
+        "readyState": 0,
+        "canvas": {
+          "w": 1920,
+          "h": 1080
+        },
+        "clientW": 1920,
+        "clientH": 1080,
+        "dpr": 1,
+        "heroSource": "poster"
+      }
+    },
+    {
+      "viewport": "1920x1080-dpr1",
+      "state": "after-overlay",
+      "file": "media-comparison\\scene01-fidelity\\site\\1920x1080-dpr1\\after-overlay-f3.png",
+      "info": {
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-tv.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "readyState": 4,
+        "canvas": {
+          "w": 1920,
+          "h": 1080
+        },
+        "clientW": 1920,
+        "clientH": 1080,
+        "dpr": 1,
+        "heroSource": "video"
+      }
+    },
+    {
+      "viewport": "1440x900-dpr1",
+      "state": "before-clean",
+      "file": "media-comparison\\scene01-fidelity\\site\\1440x900-dpr1\\before-clean-f3.png",
+      "info": {
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-tv.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "readyState": 4,
+        "canvas": {
+          "w": 1440,
+          "h": 900
+        },
+        "clientW": 1440,
+        "clientH": 900,
+        "dpr": 1,
+        "heroSource": "video"
+      }
+    },
+    {
+      "viewport": "1440x900-dpr1",
+      "state": "after-clean",
+      "file": "media-comparison\\scene01-fidelity\\site\\1440x900-dpr1\\after-clean-f3.png",
+      "info": {
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-tv.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "readyState": 4,
+        "canvas": {
+          "w": 1440,
+          "h": 900
+        },
+        "clientW": 1440,
+        "clientH": 900,
+        "dpr": 1,
+        "heroSource": "video"
+      }
+    },
+    {
+      "viewport": "1440x900-dpr1",
+      "state": "poster-only",
+      "file": "media-comparison\\scene01-fidelity\\site\\1440x900-dpr1\\poster-only-f3.png",
+      "info": {
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-tv.mp4",
+        "videoWidth": 0,
+        "videoHeight": 0,
+        "readyState": 0,
+        "canvas": {
+          "w": 1440,
+          "h": 900
+        },
+        "clientW": 1440,
+        "clientH": 900,
+        "dpr": 1,
+        "heroSource": "poster"
+      }
+    },
+    {
+      "viewport": "1440x900-dpr1",
+      "state": "after-overlay",
+      "file": "media-comparison\\scene01-fidelity\\site\\1440x900-dpr1\\after-overlay-f3.png",
+      "info": {
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-tv.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "readyState": 4,
+        "canvas": {
+          "w": 1440,
+          "h": 900
+        },
+        "clientW": 1440,
+        "clientH": 900,
+        "dpr": 1,
+        "heroSource": "video"
+      }
+    }
+  ],
+  "errors": []
+}

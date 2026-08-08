@@ -1,0 +1,551 @@
+{
+  "manifest": [
+    {
+      "viewport": "1920x1080-dpr1",
+      "id": "A-ref-lanczos",
+      "file": "media-comparison\\scene01-fidelity\\captures\\1920x1080-dpr1\\A-ref-lanczos.png",
+      "url": "http://localhost:62148/quality-diagnostic?fit=cover&frame=0&zoom=1&ui=0&mode=A&ref=lanczos",
+      "state": {
+        "ready": true,
+        "mode": "A",
+        "secondary": "C",
+        "view": "single",
+        "fit": "cover",
+        "frame": 0,
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-full.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "currentTime": 0,
+        "stage": {
+          "w": 1920,
+          "h": 1080
+        },
+        "backing": {
+          "w": 1920,
+          "h": 1080
+        },
+        "dpr": 1,
+        "geometry": {
+          "sx": 39.333333333333485,
+          "sy": 0,
+          "sw": 3797.333333333333,
+          "sh": 2136,
+          "dx": 0,
+          "dy": 0,
+          "dw": 1920,
+          "dh": 1080,
+          "ratioX": 1.9777777777777776,
+          "ratioY": 1.9777777777777779
+        },
+        "smoothing": "high",
+        "glQuality": "lanczos",
+        "glRenderer": null
+      }
+    },
+    {
+      "viewport": "1920x1080-dpr1",
+      "id": "A-ref-native",
+      "file": "media-comparison\\scene01-fidelity\\captures\\1920x1080-dpr1\\A-ref-native.png",
+      "url": "http://localhost:62148/quality-diagnostic?fit=cover&frame=0&zoom=1&ui=0&mode=A&ref=native",
+      "state": {
+        "ready": true,
+        "mode": "A",
+        "secondary": "C",
+        "view": "single",
+        "fit": "cover",
+        "frame": 0,
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-full.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "currentTime": 0,
+        "stage": {
+          "w": 1920,
+          "h": 1080
+        },
+        "backing": {
+          "w": 1920,
+          "h": 1080
+        },
+        "dpr": 1,
+        "geometry": {
+          "sx": 39.333333333333485,
+          "sy": 0,
+          "sw": 3797.333333333333,
+          "sh": 2136,
+          "dx": 0,
+          "dy": 0,
+          "dw": 1920,
+          "dh": 1080,
+          "ratioX": 1.9777777777777776,
+          "ratioY": 1.9777777777777779
+        },
+        "smoothing": "high",
+        "glQuality": "lanczos",
+        "glRenderer": null
+      }
+    },
+    {
+      "viewport": "1920x1080-dpr1",
+      "id": "B-native-remux",
+      "file": "media-comparison\\scene01-fidelity\\captures\\1920x1080-dpr1\\B-native-remux.png",
+      "url": "http://localhost:62148/quality-diagnostic?fit=cover&frame=0&zoom=1&ui=0&mode=B&vsrc=remux",
+      "state": {
+        "ready": true,
+        "mode": "B",
+        "secondary": "C",
+        "view": "single",
+        "fit": "cover",
+        "frame": 0,
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-full.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "currentTime": 0,
+        "stage": {
+          "w": 1920,
+          "h": 1080
+        },
+        "backing": {
+          "w": 1920,
+          "h": 1080
+        },
+        "dpr": 1,
+        "geometry": {
+          "sx": 39.333333333333485,
+          "sy": 0,
+          "sw": 3797.333333333333,
+          "sh": 2136,
+          "dx": 0,
+          "dy": 0,
+          "dw": 1920,
+          "dh": 1080,
+          "ratioX": 1.9777777777777776,
+          "ratioY": 1.9777777777777779
+        },
+        "smoothing": "high",
+        "glQuality": "lanczos",
+        "glRenderer": null
+      }
+    },
+    {
+      "viewport": "1920x1080-dpr1",
+      "id": "B-native-master",
+      "file": "media-comparison\\scene01-fidelity\\captures\\1920x1080-dpr1\\B-native-master.png",
+      "url": "http://localhost:62148/quality-diagnostic?fit=cover&frame=0&zoom=1&ui=0&mode=B&vsrc=master",
+      "state": {
+        "ready": true,
+        "mode": "B",
+        "secondary": "C",
+        "view": "single",
+        "fit": "cover",
+        "frame": 0,
+        "currentSrc": "http://localhost:62148/media/001-Sonare-Cena%2001%20completa.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "currentTime": 0,
+        "stage": {
+          "w": 1920,
+          "h": 1080
+        },
+        "backing": {
+          "w": 1920,
+          "h": 1080
+        },
+        "dpr": 1,
+        "geometry": {
+          "sx": 39.333333333333485,
+          "sy": 0,
+          "sw": 3797.333333333333,
+          "sh": 2136,
+          "dx": 0,
+          "dy": 0,
+          "dw": 1920,
+          "dh": 1080,
+          "ratioX": 1.9777777777777776,
+          "ratioY": 1.9777777777777779
+        },
+        "smoothing": "high",
+        "glQuality": "lanczos",
+        "glRenderer": null
+      }
+    },
+    {
+      "viewport": "1920x1080-dpr1",
+      "id": "C-canvas2d-low",
+      "file": "media-comparison\\scene01-fidelity\\captures\\1920x1080-dpr1\\C-canvas2d-low.png",
+      "url": "http://localhost:62148/quality-diagnostic?fit=cover&frame=0&zoom=1&ui=0&mode=C&sq=low",
+      "state": {
+        "ready": true,
+        "mode": "C",
+        "secondary": "C",
+        "view": "single",
+        "fit": "cover",
+        "frame": 0,
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-full.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "currentTime": 0,
+        "stage": {
+          "w": 1920,
+          "h": 1080
+        },
+        "backing": {
+          "w": 1920,
+          "h": 1080
+        },
+        "dpr": 1,
+        "geometry": {
+          "sx": 39.333333333333485,
+          "sy": 0,
+          "sw": 3797.333333333333,
+          "sh": 2136,
+          "dx": 0,
+          "dy": 0,
+          "dw": 1920,
+          "dh": 1080,
+          "ratioX": 1.9777777777777776,
+          "ratioY": 1.9777777777777779
+        },
+        "smoothing": "low",
+        "glQuality": "lanczos",
+        "glRenderer": null
+      }
+    },
+    {
+      "viewport": "1920x1080-dpr1",
+      "id": "C-canvas2d-medium",
+      "file": "media-comparison\\scene01-fidelity\\captures\\1920x1080-dpr1\\C-canvas2d-medium.png",
+      "url": "http://localhost:62148/quality-diagnostic?fit=cover&frame=0&zoom=1&ui=0&mode=C&sq=medium",
+      "state": {
+        "ready": true,
+        "mode": "C",
+        "secondary": "C",
+        "view": "single",
+        "fit": "cover",
+        "frame": 0,
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-full.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "currentTime": 0,
+        "stage": {
+          "w": 1920,
+          "h": 1080
+        },
+        "backing": {
+          "w": 1920,
+          "h": 1080
+        },
+        "dpr": 1,
+        "geometry": {
+          "sx": 39.333333333333485,
+          "sy": 0,
+          "sw": 3797.333333333333,
+          "sh": 2136,
+          "dx": 0,
+          "dy": 0,
+          "dw": 1920,
+          "dh": 1080,
+          "ratioX": 1.9777777777777776,
+          "ratioY": 1.9777777777777779
+        },
+        "smoothing": "medium",
+        "glQuality": "lanczos",
+        "glRenderer": null
+      }
+    },
+    {
+      "viewport": "1920x1080-dpr1",
+      "id": "C-canvas2d-high",
+      "file": "media-comparison\\scene01-fidelity\\captures\\1920x1080-dpr1\\C-canvas2d-high.png",
+      "url": "http://localhost:62148/quality-diagnostic?fit=cover&frame=0&zoom=1&ui=0&mode=C&sq=high",
+      "state": {
+        "ready": true,
+        "mode": "C",
+        "secondary": "C",
+        "view": "single",
+        "fit": "cover",
+        "frame": 0,
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-full.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "currentTime": 0,
+        "stage": {
+          "w": 1920,
+          "h": 1080
+        },
+        "backing": {
+          "w": 1920,
+          "h": 1080
+        },
+        "dpr": 1,
+        "geometry": {
+          "sx": 39.333333333333485,
+          "sy": 0,
+          "sw": 3797.333333333333,
+          "sh": 2136,
+          "dx": 0,
+          "dy": 0,
+          "dw": 1920,
+          "dh": 1080,
+          "ratioX": 1.9777777777777776,
+          "ratioY": 1.9777777777777779
+        },
+        "smoothing": "high",
+        "glQuality": "lanczos",
+        "glRenderer": null
+      }
+    },
+    {
+      "viewport": "1920x1080-dpr1",
+      "id": "C-canvas2d-high-dpr2",
+      "file": "media-comparison\\scene01-fidelity\\captures\\1920x1080-dpr1\\C-canvas2d-high-dpr2.png",
+      "url": "http://localhost:62148/quality-diagnostic?fit=cover&frame=0&zoom=1&ui=0&mode=C&sq=high&dpr=2",
+      "state": {
+        "ready": true,
+        "mode": "C",
+        "secondary": "C",
+        "view": "single",
+        "fit": "cover",
+        "frame": 0,
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-full.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "currentTime": 0,
+        "stage": {
+          "w": 1920,
+          "h": 1080
+        },
+        "backing": {
+          "w": 3840,
+          "h": 2160
+        },
+        "dpr": 2,
+        "geometry": {
+          "sx": 39.333333333333485,
+          "sy": 0,
+          "sw": 3797.333333333333,
+          "sh": 2136,
+          "dx": 0,
+          "dy": 0,
+          "dw": 3840,
+          "dh": 2160,
+          "ratioX": 0.9888888888888888,
+          "ratioY": 0.9888888888888889
+        },
+        "smoothing": "high",
+        "glQuality": "lanczos",
+        "glRenderer": null
+      }
+    },
+    {
+      "viewport": "1920x1080-dpr1",
+      "id": "C-canvas2d-high-dpr15",
+      "file": "media-comparison\\scene01-fidelity\\captures\\1920x1080-dpr1\\C-canvas2d-high-dpr15.png",
+      "url": "http://localhost:62148/quality-diagnostic?fit=cover&frame=0&zoom=1&ui=0&mode=C&sq=high&dpr=1.5",
+      "state": {
+        "ready": true,
+        "mode": "C",
+        "secondary": "C",
+        "view": "single",
+        "fit": "cover",
+        "frame": 0,
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-full.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "currentTime": 0,
+        "stage": {
+          "w": 1920,
+          "h": 1080
+        },
+        "backing": {
+          "w": 2880,
+          "h": 1620
+        },
+        "dpr": 1.5,
+        "geometry": {
+          "sx": 39.333333333333485,
+          "sy": 0,
+          "sw": 3797.333333333333,
+          "sh": 2136,
+          "dx": 0,
+          "dy": 0,
+          "dw": 2880,
+          "dh": 1620,
+          "ratioX": 1.3185185185185184,
+          "ratioY": 1.3185185185185184
+        },
+        "smoothing": "high",
+        "glQuality": "lanczos",
+        "glRenderer": null
+      }
+    },
+    {
+      "viewport": "1920x1080-dpr1",
+      "id": "C-canvas2d-low-master",
+      "file": "media-comparison\\scene01-fidelity\\captures\\1920x1080-dpr1\\C-canvas2d-low-master.png",
+      "url": "http://localhost:62148/quality-diagnostic?fit=cover&frame=0&zoom=1&ui=0&mode=C&sq=low&vsrc=master",
+      "state": {
+        "ready": true,
+        "mode": "C",
+        "secondary": "C",
+        "view": "single",
+        "fit": "cover",
+        "frame": 0,
+        "currentSrc": "http://localhost:62148/media/001-Sonare-Cena%2001%20completa.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "currentTime": 0,
+        "stage": {
+          "w": 1920,
+          "h": 1080
+        },
+        "backing": {
+          "w": 1920,
+          "h": 1080
+        },
+        "dpr": 1,
+        "geometry": {
+          "sx": 39.333333333333485,
+          "sy": 0,
+          "sw": 3797.333333333333,
+          "sh": 2136,
+          "dx": 0,
+          "dy": 0,
+          "dw": 1920,
+          "dh": 1080,
+          "ratioX": 1.9777777777777776,
+          "ratioY": 1.9777777777777779
+        },
+        "smoothing": "low",
+        "glQuality": "lanczos",
+        "glRenderer": null
+      }
+    },
+    {
+      "viewport": "1920x1080-dpr1",
+      "id": "D-webgl-linear",
+      "file": "media-comparison\\scene01-fidelity\\captures\\1920x1080-dpr1\\D-webgl-linear.png",
+      "url": "http://localhost:62148/quality-diagnostic?fit=cover&frame=0&zoom=1&ui=0&mode=D&glq=linear",
+      "state": {
+        "ready": true,
+        "mode": "D",
+        "secondary": "C",
+        "view": "single",
+        "fit": "cover",
+        "frame": 0,
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-full.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "currentTime": 0,
+        "stage": {
+          "w": 1920,
+          "h": 1080
+        },
+        "backing": {
+          "w": 1920,
+          "h": 1080
+        },
+        "dpr": 1,
+        "geometry": {
+          "sx": 39.333333333333485,
+          "sy": 0,
+          "sw": 3797.333333333333,
+          "sh": 2136,
+          "dx": 0,
+          "dy": 0,
+          "dw": 1920,
+          "dh": 1080,
+          "ratioX": 1.9777777777777776,
+          "ratioY": 1.9777777777777779
+        },
+        "smoothing": "high",
+        "glQuality": "linear",
+        "glRenderer": "ANGLE (AMD, AMD Radeon RX 6600 (0x000073FF) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+      }
+    },
+    {
+      "viewport": "1920x1080-dpr1",
+      "id": "D-webgl-mipmap",
+      "file": "media-comparison\\scene01-fidelity\\captures\\1920x1080-dpr1\\D-webgl-mipmap.png",
+      "url": "http://localhost:62148/quality-diagnostic?fit=cover&frame=0&zoom=1&ui=0&mode=D&glq=mipmap",
+      "state": {
+        "ready": true,
+        "mode": "D",
+        "secondary": "C",
+        "view": "single",
+        "fit": "cover",
+        "frame": 0,
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-full.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "currentTime": 0,
+        "stage": {
+          "w": 1920,
+          "h": 1080
+        },
+        "backing": {
+          "w": 1920,
+          "h": 1080
+        },
+        "dpr": 1,
+        "geometry": {
+          "sx": 39.333333333333485,
+          "sy": 0,
+          "sw": 3797.333333333333,
+          "sh": 2136,
+          "dx": 0,
+          "dy": 0,
+          "dw": 1920,
+          "dh": 1080,
+          "ratioX": 1.9777777777777776,
+          "ratioY": 1.9777777777777779
+        },
+        "smoothing": "high",
+        "glQuality": "mipmap",
+        "glRenderer": "ANGLE (AMD, AMD Radeon RX 6600 (0x000073FF) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+      }
+    },
+    {
+      "viewport": "1920x1080-dpr1",
+      "id": "D-webgl-lanczos",
+      "file": "media-comparison\\scene01-fidelity\\captures\\1920x1080-dpr1\\D-webgl-lanczos.png",
+      "url": "http://localhost:62148/quality-diagnostic?fit=cover&frame=0&zoom=1&ui=0&mode=D&glq=lanczos",
+      "state": {
+        "ready": true,
+        "mode": "D",
+        "secondary": "C",
+        "view": "single",
+        "fit": "cover",
+        "frame": 0,
+        "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-full.mp4",
+        "videoWidth": 3876,
+        "videoHeight": 2136,
+        "currentTime": 0,
+        "stage": {
+          "w": 1920,
+          "h": 1080
+        },
+        "backing": {
+          "w": 1920,
+          "h": 1080
+        },
+        "dpr": 1,
+        "geometry": {
+          "sx": 39.333333333333485,
+          "sy": 0,
+          "sw": 3797.333333333333,
+          "sh": 2136,
+          "dx": 0,
+          "dy": 0,
+          "dw": 1920,
+          "dh": 1080,
+          "ratioX": 1.9777777777777776,
+          "ratioY": 1.9777777777777779
+        },
+        "smoothing": "high",
+        "glQuality": "lanczos",
+        "glRenderer": "ANGLE (AMD, AMD Radeon RX 6600 (0x000073FF) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+      }
+    }
+  ],
+  "errors": []
+}

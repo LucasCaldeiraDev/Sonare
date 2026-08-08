@@ -1,0 +1,40 @@
+{
+  "sources": [
+    {
+      "index": 1,
+      "currentSrc": "http://localhost:62148/media/web/scene-01-4k-bt709-full.mp4",
+      "videoWidth": 3876,
+      "videoHeight": 2136,
+      "readyState": 4
+    },
+    {
+      "index": 2,
+      "currentSrc": "http://localhost:62148/media/web/scene-02-4k-bt709-full.mp4",
+      "videoWidth": 3876,
+      "videoHeight": 2136,
+      "readyState": 4
+    },
+    {
+      "index": 3,
+      "currentSrc": "http://localhost:62148/media/web/scene-03-4k-bt709-full.mp4",
+      "videoWidth": 3856,
+      "videoHeight": 2148,
+      "readyState": 4
+    },
+    {
+      "index": 4,
+      "currentSrc": "http://localhost:62148/media/web/scene-04-4k-bt709-full.mp4",
+      "videoWidth": 3876,
+      "videoHeight": 2136,
+      "readyState": 4
+    },
+    {
+      "index": 5,
+      "currentSrc": "http://localhost:62148/media/web/scene-05-4k-bt709-full.mp4",
+      "videoWidth": 3876,
+      "videoHeight": 2136,
+      "readyState": 4
+    }
+  ],
+  "errors": []
+}

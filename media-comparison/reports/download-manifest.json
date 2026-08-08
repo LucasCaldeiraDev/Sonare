@@ -1,0 +1,82 @@
+{
+  "gerado_em": "2026-08-04T22:55:35Z",
+  "fonte": "Higgsfield MCP (conta autenticada do usuário) — URLs oficiais de download em d8j0ntlcm91z4.cloudfront.net",
+  "pagina_do_projeto": "https://higgsfield.ai/asset/bd1debe2-4f96-4b95-bf28-ca3c0abe5394",
+  "ferramenta_analise": "ffprobe/ffmpeg 9.0-full_build (gyan.dev)",
+  "assets": [
+    {
+      "cena": "01", "rotulo": "fachada", "asset_id": "2bc8f51e-6eb8-4831-b809-dc4a01a68c47",
+      "url_pagina": "https://higgsfield.ai/asset/bd1debe2-4f96-4b95-bf28-ca3c0abe5394",
+      "arquivo_baixado": "hf_20260803_200947_2bc8f51e-6eb8-4831-b809-dc4a01a68c47.mp4",
+      "master_atual": "001-Sonare-Cena 01 completa.mp4",
+      "master_atual_caminho_absoluto": "C:/Users/Caldeira/OneDrive/Documentos/GitHub/Sonare/public/media/001-Sonare-Cena 01 completa.mp4",
+      "sha256_higgsfield": "c81f177a00364d45238726b3f1f7153090428e2e4a2c36db645a9acde085148a",
+      "sha256_master_atual": "c81f177a00364d45238726b3f1f7153090428e2e4a2c36db645a9acde085148a",
+      "bytes": 35039741, "MB": 35.040, "MiB": 33.417,
+      "resolucao": "3876x2136", "duracao_s": 7.041667, "fps": "24/1", "frames": 169,
+      "bitrate_Mbps": 39.81,
+      "pix_fmt": "yuv420p", "color_range": "unknown", "color_primaries": "unknown", "transfer": "unknown", "colorspace": "unknown",
+      "audio": "nenhum", "classificacao": "IDENTICO"
+    }
+    ,
+    {
+      "cena": "02", "rotulo": "living", "asset_id": "2e3f32ab-205b-401f-9ee8-8c6c28db59a0",
+      "url_pagina": "https://higgsfield.ai/asset/bd1debe2-4f96-4b95-bf28-ca3c0abe5394",
+      "arquivo_baixado": "hf_20260804_000213_2e3f32ab-205b-401f-9ee8-8c6c28db59a0.mp4",
+      "master_atual": "002-Sonare-Cena 02.mp4",
+      "master_atual_caminho_absoluto": "C:/Users/Caldeira/OneDrive/Documentos/GitHub/Sonare/public/media/002-Sonare-Cena 02.mp4",
+      "sha256_higgsfield": "16d3d955a0af82f5862062471485414d08aac1769330fee9f405b149169c2b9f",
+      "sha256_master_atual": "16d3d955a0af82f5862062471485414d08aac1769330fee9f405b149169c2b9f",
+      "bytes": 14221335, "MB": 14.221, "MiB": 13.563,
+      "resolucao": "3876x2136", "duracao_s": 4.041667, "fps": "24/1", "frames": 97,
+      "bitrate_Mbps": 28.15,
+      "pix_fmt": "yuv420p", "color_range": "unknown", "color_primaries": "unknown", "transfer": "unknown", "colorspace": "unknown",
+      "audio": "nenhum", "classificacao": "IDENTICO"
+    }
+    ,
+    {
+      "cena": "03", "rotulo": "display", "asset_id": "81137133-a4fa-49b8-83fb-410379f25ce1",
+      "url_pagina": "https://higgsfield.ai/asset/bd1debe2-4f96-4b95-bf28-ca3c0abe5394",
+      "arquivo_baixado": "hf_20260804_004307_81137133-a4fa-49b8-83fb-410379f25ce1.mp4",
+      "master_atual": "003-Sonare-Cena-03.mp4",
+      "master_atual_caminho_absoluto": "C:/Users/Caldeira/OneDrive/Documentos/GitHub/Sonare/public/media/003-Sonare-Cena-03.mp4",
+      "sha256_higgsfield": "7a14839c45684a0113a15aeda9f6aa1e2ad441d006baf3fbcd3f6bbd02ddf608",
+      "sha256_master_atual": "7a14839c45684a0113a15aeda9f6aa1e2ad441d006baf3fbcd3f6bbd02ddf608",
+      "bytes": 12901055, "MB": 12.901, "MiB": 12.303,
+      "resolucao": "3856x2148", "duracao_s": 5.041667, "fps": "24/1", "frames": 121,
+      "bitrate_Mbps": 20.47,
+      "pix_fmt": "yuv420p", "color_range": "unknown", "color_primaries": "unknown", "transfer": "unknown", "colorspace": "unknown",
+      "audio": "nenhum", "classificacao": "IDENTICO"
+    }
+    ,
+    {
+      "cena": "04", "rotulo": "gourmet", "asset_id": "11e2308a-5637-4833-8bb6-f86c327df6f6",
+      "url_pagina": "https://higgsfield.ai/asset/bd1debe2-4f96-4b95-bf28-ca3c0abe5394",
+      "arquivo_baixado": "hf_20260804_005524_11e2308a-5637-4833-8bb6-f86c327df6f6.mp4",
+      "master_atual": "004-Sonare-Cena-04.mp4",
+      "master_atual_caminho_absoluto": "C:/Users/Caldeira/OneDrive/Documentos/GitHub/Sonare/public/media/004-Sonare-Cena-04.mp4",
+      "sha256_higgsfield": "58b07b29ca60b4007588e2609f4c4968cc89022d63e3e087e3244345e3ace54b",
+      "sha256_master_atual": "58b07b29ca60b4007588e2609f4c4968cc89022d63e3e087e3244345e3ace54b",
+      "bytes": 20284294, "MB": 20.284, "MiB": 19.345,
+      "resolucao": "3876x2136", "duracao_s": 5.041667, "fps": "24/1", "frames": 121,
+      "bitrate_Mbps": 32.19,
+      "pix_fmt": "yuv420p", "color_range": "unknown", "color_primaries": "unknown", "transfer": "unknown", "colorspace": "unknown",
+      "audio": "nenhum", "classificacao": "IDENTICO"
+    }
+    ,
+    {
+      "cena": "05", "rotulo": "skyline", "asset_id": "527c3b10-a62d-4f19-91d1-97feff9b3ebd",
+      "url_pagina": "https://higgsfield.ai/asset/bd1debe2-4f96-4b95-bf28-ca3c0abe5394",
+      "arquivo_baixado": "hf_20260804_155631_527c3b10-a62d-4f19-91d1-97feff9b3ebd.mp4",
+      "master_atual": "005-Sonare-Cena-05.mp4",
+      "master_atual_caminho_absoluto": "C:/Users/Caldeira/OneDrive/Documentos/GitHub/Sonare/public/media/005-Sonare-Cena-05.mp4",
+      "sha256_higgsfield": "94fb46d79ec367e2342994a07a7f608f16470024182153d5a9a7079748ca247d",
+      "sha256_master_atual": "94fb46d79ec367e2342994a07a7f608f16470024182153d5a9a7079748ca247d",
+      "bytes": 29018925, "MB": 29.019, "MiB": 27.675,
+      "resolucao": "3876x2136", "duracao_s": 8.041667, "fps": "24/1", "frames": 193,
+      "bitrate_Mbps": 28.87,
+      "pix_fmt": "yuv420p", "color_range": "unknown", "color_primaries": "unknown", "transfer": "unknown", "colorspace": "unknown",
+      "audio": "nenhum", "classificacao": "IDENTICO"
+    }
+  ]
+}

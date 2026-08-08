@@ -1,0 +1,47 @@
+{
+  "evidence": {
+    "scrollY": 0,
+    "heroSource": "video",
+    "canvas": {
+      "size": "1920x1080",
+      "css": "1920x1080",
+      "opacity": "1",
+      "filter": "none",
+      "mixBlendMode": "normal",
+      "backdropFilter": "none",
+      "transform": "none"
+    },
+    "gradientCount": 4,
+    "gradients": [
+      {
+        "tag": "span",
+        "cls": "pointer-events-none absolute bottom-0 left-0 h-[54%] w-full sm:w-[44%]",
+        "backgroundImage": "radial-gradient(88% 92% at 18% 92%, rgba(0, 0, 0, 0.34) 0%, rgba(0, 0, 0, 0.14) 44%, rgba(0, 0, 0, 0) 72%)",
+        "rect": "845x583 @ 0,497",
+        "opacity": "1"
+      },
+      {
+        "tag": "span",
+        "cls": "absolute left-0 bottom-0 w-[52%] h-[62%]",
+        "backgroundImage": "radial-gradient(at 0% 100%, rgba(0, 0, 0, 0.44) 0%, rgba(0, 0, 0, 0.2) 40%, rgba(0, 0, 0, 0) 72%)",
+        "rect": "998x670 @ 0,432",
+        "opacity": "1"
+      },
+      {
+        "tag": "span",
+        "cls": "absolute left-0 bottom-0 w-[52%] h-[62%]",
+        "backgroundImage": "radial-gradient(at 0% 100%, rgba(0, 0, 0, 0.44) 0%, rgba(0, 0, 0, 0.2) 40%, rgba(0, 0, 0, 0) 72%)",
+        "rect": "998x670 @ 0,432",
+        "opacity": "1"
+      },
+      {
+        "tag": "span",
+        "cls": "absolute left-0 bottom-0 w-[52%] h-[62%]",
+        "backgroundImage": "radial-gradient(at 0% 100%, rgba(0, 0, 0, 0.44) 0%, rgba(0, 0, 0, 0.2) 40%, rgba(0, 0, 0, 0) 72%)",
+        "rect": "998x670 @ 0,432",
+        "opacity": "1"
+      }
+    ]
+  },
+  "errors": []
+}

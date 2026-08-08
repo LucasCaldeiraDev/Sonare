@@ -1,0 +1,99 @@
+{
+  "out": {
+    "antigo": {
+      "label": "sem mídia reversa",
+      "g": {
+        "desce-lento": {
+          "presented": 80,
+          "fps": 11.8,
+          "seeks": 0,
+          "rafP99": 16.9,
+          "secs": 6.8
+        },
+        "desce-rapido": {
+          "presented": 113,
+          "fps": 39,
+          "seeks": 2,
+          "rafP99": 50,
+          "secs": 2.9
+        },
+        "sobe-rapido": {
+          "presented": 28,
+          "fps": 9.7,
+          "seeks": 28,
+          "rafP99": 50.1,
+          "secs": 2.9
+        },
+        "zigzag": {
+          "presented": 22,
+          "fps": 5.1,
+          "seeks": 9,
+          "rafP99": 50,
+          "secs": 4.3
+        },
+        "fronteira-1-2": {
+          "presented": 83,
+          "fps": 19.8,
+          "seeks": 19,
+          "rafP99": 49.9,
+          "secs": 4.2
+        },
+        "fronteira-3-4": {
+          "presented": 100,
+          "fps": 23.8,
+          "seeks": 17,
+          "rafP99": 33.4,
+          "secs": 4.2
+        }
+      }
+    },
+    "pathA": {
+      "label": "com mídia reversa",
+      "g": {
+        "desce-lento": {
+          "presented": 87,
+          "fps": 12.8,
+          "seeks": 7,
+          "rafP99": 16.9,
+          "secs": 6.8
+        },
+        "desce-rapido": {
+          "presented": 113,
+          "fps": 39,
+          "seeks": 11,
+          "rafP99": 100.1,
+          "secs": 2.9
+        },
+        "sobe-rapido": {
+          "presented": 107,
+          "fps": 36.9,
+          "seeks": 14,
+          "rafP99": 16.9,
+          "secs": 2.9
+        },
+        "zigzag": {
+          "presented": 24,
+          "fps": 5.6,
+          "seeks": 3,
+          "rafP99": 16.9,
+          "secs": 4.3
+        },
+        "fronteira-1-2": {
+          "presented": 114,
+          "fps": 27.1,
+          "seeks": 9,
+          "rafP99": 16.9,
+          "secs": 4.2
+        },
+        "fronteira-3-4": {
+          "presented": 109,
+          "fps": 26,
+          "seeks": 13,
+          "rafP99": 50,
+          "secs": 4.2
+        }
+      }
+    }
+  },
+  "errors": []
+}

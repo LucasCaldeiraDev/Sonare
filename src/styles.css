@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+/* The skill packages under .claude/ ship their own galleries and templates.
+   Tailwind v4 auto-detects sources from the project root, so without this the
+   generated stylesheet doubles with classes nothing in the app ever renders. */
+@source not "../.claude";
+@source not "../.agents";
+
+@theme {
+  --color-sonare-black: #000000;
+  --color-sonare-ink: #141414;
+  --color-sonare-white: #ffffff;
+  --color-sonare-silver: #cbcbcb;
+  --color-sonare-gold: #cf9f52;
+  /* Darkened ramp of the brand gold for small text on light surfaces (WCAG AA). */
+  --color-sonare-gold-deep: #8a6a2a;
+
+  --font-grandis: "Grandis Extended", "Segoe UI", system-ui, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+@font-face {
+  font-family: "Grandis Extended";
+  src: url("./assets/fonts/GrandisExtended-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Grandis Extended";
+  src: url("./assets/fonts/GrandisExtended-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Grandis Extended";
+  src: url("./assets/fonts/GrandisExtended-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Element defaults live in the base layer so Tailwind utilities always win. */
+@layer base {
+  :root {
+    color-scheme: dark;
+    font-family: var(--font-body);
+    background: #000000;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(203, 203, 203, 0.35) transparent;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    background: #000000;
+    color: #ffffff;
+    overflow-x: hidden;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  img,
+  video {
+    max-width: 100%;
+    display: block;
+  }
+
+  ::selection {
+    background: rgba(207, 159, 82, 0.32);
+    color: #ffffff;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(203, 203, 203, 0.28);
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(207, 159, 82, 0.45);
+  }
+
+  :focus-visible {
+    outline: 2px solid #cf9f52;
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .skip-link {
+    position: fixed;
+    top: -100%;
+    left: 1rem;
+    z-index: 100;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #000000;
+    padding: 0.85rem 1.25rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    transition: top 0.2s ease;
+  }
+
+  .skip-link:focus-visible {
+    top: 1rem;
+  }
+}

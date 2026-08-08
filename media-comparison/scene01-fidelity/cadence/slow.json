@@ -1,0 +1,235 @@
+{
+  "out": {
+    "48fps": {
+      "v013": {
+        "unique": 37,
+        "fps": 6,
+        "p50": 200.1,
+        "p95": 233.8,
+        "p99": 300.4,
+        "maxHold": 300,
+        "over75": 36,
+        "over150": 18,
+        "over250": 1,
+        "heldPct": 86,
+        "duty": 54,
+        "rateP50": 0.2,
+        "lagP50": 0.4,
+        "lagP95": 1.1,
+        "leadMax": 0,
+        "lagMax": 1.1,
+        "plays": 19,
+        "pauses": 20,
+        "seeks": 0,
+        "settleMs": 283,
+        "redraws": 441,
+        "byReason": {
+          "gap-forward": 19,
+          "inactive-track": 0,
+          "scroll-settled": 1,
+          "near-target": 19
+        },
+        "mediaEvents": {
+          "playing": 19
+        }
+      },
+      "v025": {
+        "unique": 71,
+        "fps": 11.4,
+        "p50": 99.7,
+        "p95": 116.9,
+        "p99": 117.7,
+        "maxHold": 118,
+        "over75": 35,
+        "over150": 0,
+        "over250": 0,
+        "heldPct": 49,
+        "duty": 68,
+        "rateP50": 0.3,
+        "lagP50": 0.8,
+        "lagP95": 1.4,
+        "leadMax": 0,
+        "lagMax": 1.4,
+        "plays": 36,
+        "pauses": 36,
+        "seeks": 2,
+        "settleMs": 383,
+        "redraws": 404,
+        "byReason": {
+          "gap-forward": 36,
+          "inactive-track": 0,
+          "scroll-settled": 0,
+          "near-target": 36
+        },
+        "mediaEvents": {
+          "playing": 36
+        }
+      },
+      "v050": {
+        "unique": 141,
+        "fps": 22.7,
+        "p50": 33.6,
+        "p95": 66.8,
+        "p99": 72.7,
+        "maxHold": 100,
+        "over75": 1,
+        "over150": 0,
+        "over250": 0,
+        "heldPct": 2,
+        "duty": 80,
+        "rateP50": 0.6,
+        "lagP50": 1.5,
+        "lagP95": 2.1,
+        "leadMax": 0,
+        "lagMax": 2.1,
+        "plays": 63,
+        "pauses": 63,
+        "seeks": 2,
+        "settleMs": 483,
+        "redraws": 331,
+        "byReason": {
+          "gap-forward": 63,
+          "inactive-track": 0,
+          "scroll-settled": 0,
+          "near-target": 63
+        },
+        "mediaEvents": {
+          "playing": 63
+        }
+      },
+      "v100": {
+        "unique": 286,
+        "fps": 46,
+        "p50": 16.7,
+        "p95": 33.6,
+        "p99": 33.8,
+        "maxHold": 107,
+        "over75": 1,
+        "over150": 0,
+        "over250": 0,
+        "heldPct": 2,
+        "duty": 88,
+        "rateP50": 1.1,
+        "lagP50": 2.8,
+        "lagP95": 3.1,
+        "leadMax": 0,
+        "lagMax": 3.2,
+        "plays": 40,
+        "pauses": 40,
+        "seeks": 2,
+        "settleMs": 584,
+        "redraws": 181,
+        "byReason": {
+          "gap-forward": 40,
+          "inactive-track": 0,
+          "scroll-settled": 0,
+          "near-target": 40
+        },
+        "mediaEvents": {
+          "playing": 40
+        }
+      },
+      "v200": {
+        "unique": 135,
+        "fps": 43.3,
+        "p50": 16.8,
+        "p95": 49.8,
+        "p99": 66.7,
+        "maxHold": 97,
+        "over75": 1,
+        "over150": 0,
+        "over250": 0,
+        "heldPct": 0,
+        "duty": 95,
+        "rateP50": 1.5,
+        "lagP50": 9.9,
+        "lagP95": 15.3,
+        "leadMax": 0,
+        "lagMax": 16.1,
+        "plays": 5,
+        "pauses": 6,
+        "seeks": 7,
+        "settleMs": 767,
+        "redraws": 128,
+        "byReason": {
+          "gap-forward": 5,
+          "inactive-track": 0,
+          "scroll-settled": 0,
+          "near-target": 4,
+          "overshoot": 2
+        },
+        "mediaEvents": {
+          "playing": 10,
+          "waiting": 5
+        }
+      },
+      "u050": {
+        "unique": 141,
+        "fps": 22.7,
+        "p50": 33.5,
+        "p95": 83.4,
+        "p99": 83.6,
+        "maxHold": 84,
+        "over75": 11,
+        "over150": 0,
+        "over250": 0,
+        "heldPct": 0,
+        "duty": 83,
+        "rateP50": 0.6,
+        "lagP50": -1.3,
+        "lagP95": -1,
+        "leadMax": -2.6,
+        "lagMax": 0,
+        "plays": 64,
+        "pauses": 65,
+        "seeks": 0,
+        "settleMs": 517,
+        "redraws": 333,
+        "byReason": {
+          "gap-forward": 64,
+          "inactive-track": 0,
+          "scroll-settled": 0,
+          "near-target": 65,
+          "overshoot": 0
+        },
+        "mediaEvents": {
+          "playing": 64
+        }
+      },
+      "u100": {
+        "unique": 300,
+        "fps": 48.3,
+        "p50": 16.7,
+        "p95": 33.5,
+        "p99": 33.7,
+        "maxHold": 34,
+        "over75": 0,
+        "over150": 0,
+        "over250": 0,
+        "heldPct": 0,
+        "duty": 90,
+        "rateP50": 1.1,
+        "lagP50": -2.2,
+        "lagP95": -1.8,
+        "leadMax": -3,
+        "lagMax": 0,
+        "plays": 38,
+        "pauses": 39,
+        "seeks": 0,
+        "settleMs": 600,
+        "redraws": 170,
+        "byReason": {
+          "gap-forward": 38,
+          "inactive-track": 0,
+          "scroll-settled": 0,
+          "near-target": 39,
+          "overshoot": 0
+        },
+        "mediaEvents": {
+          "playing": 39
+        }
+      }
+    }
+  },
+  "errors": []
+}

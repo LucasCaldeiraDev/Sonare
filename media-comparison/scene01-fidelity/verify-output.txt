@@ -1,0 +1,98 @@
+
+==============================================================================
+001-Sonare-Cena 01 completa.mp4
+  -> scene-01-4k-bt709-full.mp4
+  size          35039741 -> 35039568  (-173 bytes)
+  resolution    3876x2136 -> 3876x2136
+  duration      7.041667 -> 7.041667
+  frames        169 -> 169   (framemd5 rows 169 -> 169)
+  fps           24/1 -> 24/1   (avg 24/1 -> 24/1)
+  codec         h264/Main@L51 yuv420p -> h264/Main@L51 yuvj420p
+  bitrate       39806193 -> 39806193
+  color_range   UNSET -> pc
+  primaries     UNSET -> bt709
+  transfer      UNSET -> bt709
+  matrix        UNSET -> bt709
+  elementary    f98db8eb5e9687724cfb989897f2001d
+                f98db8eb5e9687724cfb989897f2001d   IDENTICAL
+  framemd5      d1cfbb4c3d6b2d0065c8d5e87f8fb2f7
+                d1cfbb4c3d6b2d0065c8d5e87f8fb2f7   IDENTICAL
+
+==============================================================================
+002-Sonare-Cena 02.mp4
+  -> scene-02-4k-bt709-full.mp4
+  size          14221335 -> 14221162  (-173 bytes)
+  resolution    3876x2136 -> 3876x2136
+  duration      4.041667 -> 4.041667
+  frames        97 -> 97   (framemd5 rows 97 -> 97)
+  fps           24/1 -> 24/1   (avg 24/1 -> 24/1)
+  codec         h264/Main@L51 yuv420p -> h264/Main@L51 yuvj420p
+  bitrate       28146338 -> 28146338
+  color_range   UNSET -> pc
+  primaries     UNSET -> bt709
+  transfer      UNSET -> bt709
+  matrix        UNSET -> bt709
+  elementary    db33fef3206a60ec2251f10a6f8a729a
+                db33fef3206a60ec2251f10a6f8a729a   IDENTICAL
+  framemd5      4fb95adb5116262fd5612042de616239
+                4fb95adb5116262fd5612042de616239   IDENTICAL
+
+==============================================================================
+003-Sonare-Cena-03.mp4
+  -> scene-03-4k-bt709-full.mp4
+  size          12901055 -> 12900882  (-173 bytes)
+  resolution    3856x2148 -> 3856x2148
+  duration      5.041667 -> 5.041667
+  frames        121 -> 121   (framemd5 rows 121 -> 121)
+  fps           24/1 -> 24/1   (avg 24/1 -> 24/1)
+  codec         h264/Main@L51 yuv420p -> h264/Main@L51 yuvj420p
+  bitrate       20468410 -> 20468410
+  color_range   UNSET -> pc
+  primaries     UNSET -> bt709
+  transfer      UNSET -> bt709
+  matrix        UNSET -> bt709
+  elementary    a6a9cfcafde02ff8fb6dc3c56285ce96
+                a6a9cfcafde02ff8fb6dc3c56285ce96   IDENTICAL
+  framemd5      0e32c14b51c2163123dc33e232b30cef
+                0e32c14b51c2163123dc33e232b30cef   IDENTICAL
+
+==============================================================================
+004-Sonare-Cena-04.mp4
+  -> scene-04-4k-bt709-full.mp4
+  size          20284294 -> 20284121  (-173 bytes)
+  resolution    3876x2136 -> 3876x2136
+  duration      5.041667 -> 5.041667
+  frames        121 -> 121   (framemd5 rows 121 -> 121)
+  fps           24/1 -> 24/1   (avg 24/1 -> 24/1)
+  codec         h264/Main@L51 yuv420p -> h264/Main@L51 yuvj420p
+  bitrate       32183865 -> 32183865
+  color_range   UNSET -> pc
+  primaries     UNSET -> bt709
+  transfer      UNSET -> bt709
+  matrix        UNSET -> bt709
+  elementary    198dda002056a5c4d9de33513931ca9f
+                198dda002056a5c4d9de33513931ca9f   IDENTICAL
+  framemd5      4ab4a44ea92df126d48c5a44c6aa7308
+                4ab4a44ea92df126d48c5a44c6aa7308   IDENTICAL
+
+==============================================================================
+005-Sonare-Cena-05.mp4
+  -> scene-05-4k-bt709-full.mp4
+  size          29018925 -> 29018752  (-173 bytes)
+  resolution    3876x2136 -> 3876x2136
+  duration      8.041667 -> 8.041667
+  frames        193 -> 193   (framemd5 rows 193 -> 193)
+  fps           24/1 -> 24/1   (avg 24/1 -> 24/1)
+  codec         h264/Main@L51 yuv420p -> h264/Main@L51 yuvj420p
+  bitrate       28866492 -> 28866492
+  color_range   UNSET -> pc
+  primaries     UNSET -> bt709
+  transfer      UNSET -> bt709
+  matrix        UNSET -> bt709
+  elementary    7d13bf1021491306fe49534cf09ea00a
+                7d13bf1021491306fe49534cf09ea00a   IDENTICAL
+  framemd5      5ed3babcfe3f9b22391d2b65a1d0cd43
+                5ed3babcfe3f9b22391d2b65a1d0cd43   IDENTICAL
+
+==============================================================================
+ALL FIVE: elementary stream and decoded frames bit-identical. Container only.

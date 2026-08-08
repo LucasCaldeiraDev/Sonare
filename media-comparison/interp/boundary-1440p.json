@@ -1,0 +1,125 @@
+{
+  "rows": [
+    {
+      "junction": "01-02",
+      "speed": "lento",
+      "dir": "desce",
+      "n": 3,
+      "heldMed": 34.9,
+      "heldMax": 35.7,
+      "held": [
+        34.9,
+        35.7,
+        17.2
+      ],
+      "warmLead": 3794,
+      "armLead": 3776,
+      "gapP95": 105,
+      "gapMax": 247,
+      "gapMaxRel": 3888,
+      "nearCross": 6,
+      "waiting": 0
+    },
+    {
+      "junction": "01-02",
+      "speed": "lento",
+      "dir": "sobe",
+      "n": 3,
+      "heldMed": 17.1,
+      "heldMax": 51.7,
+      "held": [
+        17.1,
+        51.7,
+        17.1
+      ],
+      "warmLead": 4912,
+      "armLead": 4866,
+      "gapP95": 106.8,
+      "gapMax": 247,
+      "gapMaxRel": 3746,
+      "nearCross": 9,
+      "waiting": 1
+    },
+    {
+      "junction": "01-02",
+      "speed": "medio",
+      "dir": "desce",
+      "n": 3,
+      "heldMed": 18.1,
+      "heldMax": 36.1,
+      "held": [
+        18.1,
+        17.7,
+        36.1
+      ],
+      "warmLead": 2277,
+      "armLead": 2259,
+      "gapP95": 52.6,
+      "gapMax": 232,
+      "gapMaxRel": 2534,
+      "nearCross": 3,
+      "waiting": 0
+    },
+    {
+      "junction": "01-02",
+      "speed": "medio",
+      "dir": "sobe",
+      "n": 3,
+      "heldMed": 34.5,
+      "heldMax": 35.8,
+      "held": [
+        35.8,
+        34.5,
+        34.5
+      ],
+      "warmLead": 3475,
+      "armLead": 3434,
+      "gapP95": 69.2,
+      "gapMax": 232,
+      "gapMaxRel": 2490,
+      "nearCross": 3,
+      "waiting": 0
+    },
+    {
+      "junction": "01-02",
+      "speed": "rapido",
+      "dir": "desce",
+      "n": 3,
+      "heldMed": 17.1,
+      "heldMax": 17.3,
+      "held": [
+        17.1,
+        17.3,
+        17
+      ],
+      "warmLead": 1220,
+      "armLead": 1202,
+      "gapP95": 53.7,
+      "gapMax": 229,
+      "gapMaxRel": 2041,
+      "nearCross": 0,
+      "waiting": 4
+    },
+    {
+      "junction": "01-02",
+      "speed": "rapido",
+      "dir": "sobe",
+      "n": 3,
+      "heldMed": 17.3,
+      "heldMax": 17.9,
+      "held": [
+        17.2,
+        17.3,
+        17.9
+      ],
+      "warmLead": 2414,
+      "armLead": 2369,
+      "gapP95": 53.3,
+      "gapMax": 263,
+      "gapMaxRel": 2009,
+      "nearCross": 0,
+      "waiting": 0
+    }
+  ],
+  "errors": []
+}

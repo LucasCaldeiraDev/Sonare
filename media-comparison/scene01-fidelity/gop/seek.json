@@ -1,0 +1,910 @@
+{
+  "original": {
+    "label": "atual (1 keyframe)",
+    "random": [
+      {
+        "frame": 57,
+        "seeked": 214.10000014305115,
+        "painted": 226.79999995231628
+      },
+      {
+        "frame": 55,
+        "seeked": 222.90000009536743,
+        "painted": 233.40000009536743
+      },
+      {
+        "frame": 50,
+        "seeked": 202.90000009536743,
+        "painted": 216.90000009536743
+      },
+      {
+        "frame": 15,
+        "seeked": 105.79999995231628,
+        "painted": 106.79999995231628
+      },
+      {
+        "frame": 83,
+        "seeked": 313.2999999523163,
+        "painted": 326.89999985694885
+      },
+      {
+        "frame": 90,
+        "seeked": 353.40000009536743,
+        "painted": 367.10000014305115
+      },
+      {
+        "frame": 34,
+        "seeked": 139.70000004768372,
+        "painted": 150.20000004768372
+      },
+      {
+        "frame": 24,
+        "seeked": 100.89999985694885,
+        "painted": 116.79999995231628
+      },
+      {
+        "frame": 29,
+        "seeked": 121.29999995231628,
+        "painted": 133.39999985694885
+      },
+      {
+        "frame": 18,
+        "seeked": 79.40000009536743,
+        "painted": 83.40000009536743
+      },
+      {
+        "frame": 18,
+        "seeked": 0.40000009536743164,
+        "painted": null
+      },
+      {
+        "frame": 33,
+        "seeked": 34,
+        "painted": 49.799999952316284
+      },
+      {
+        "frame": 60,
+        "seeked": 312.90000009536743,
+        "painted": 317.10000014305115
+      },
+      {
+        "frame": 57,
+        "seeked": 232.09999990463257,
+        "painted": 233.39999985694885
+      },
+      {
+        "frame": 7,
+        "seeked": 41.60000014305115,
+        "painted": 50
+      },
+      {
+        "frame": 80,
+        "seeked": 323.60000014305115,
+        "painted": 333.80000019073486
+      },
+      {
+        "frame": 93,
+        "seeked": 370.69999980926514,
+        "painted": 383.59999990463257
+      },
+      {
+        "frame": 88,
+        "seeked": 345,
+        "painted": 350.2999999523163
+      },
+      {
+        "frame": 93,
+        "seeked": 375.7000000476837,
+        "painted": 383.7999999523163
+      },
+      {
+        "frame": 89,
+        "seeked": 354.10000014305115,
+        "painted": 367
+      }
+    ],
+    "reverse": [
+      {
+        "frame": 95,
+        "seeked": 379.40000009536743,
+        "painted": 383.80000019073486
+      },
+      {
+        "frame": 91,
+        "seeked": 357.69999980926514,
+        "painted": 367
+      },
+      {
+        "frame": 87,
+        "seeked": 348.69999980926514,
+        "painted": 350.2999999523163
+      },
+      {
+        "frame": 83,
+        "seeked": 329.39999985694885,
+        "painted": 333.7000000476837
+      },
+      {
+        "frame": 79,
+        "seeked": 311.2999999523163,
+        "painted": 316.89999985694885
+      },
+      {
+        "frame": 75,
+        "seeked": 299,
+        "painted": 300.40000009536743
+      },
+      {
+        "frame": 71,
+        "seeked": 284,
+        "painted": 300.2999999523163
+      },
+      {
+        "frame": 67,
+        "seeked": 269.40000009536743,
+        "painted": 283.5
+      },
+      {
+        "frame": 63,
+        "seeked": 256,
+        "painted": 266.90000009536743
+      },
+      {
+        "frame": 59,
+        "seeked": 240.09999990463257,
+        "painted": 250.29999995231628
+      },
+      {
+        "frame": 55,
+        "seeked": 225.20000004768372,
+        "painted": 233.5
+      },
+      {
+        "frame": 51,
+        "seeked": 212.40000009536743,
+        "painted": 216.90000009536743
+      },
+      {
+        "frame": 47,
+        "seeked": 192.70000004768372,
+        "painted": 200.20000004768372
+      },
+      {
+        "frame": 43,
+        "seeked": 174.5,
+        "painted": 183.5
+      },
+      {
+        "frame": 39,
+        "seeked": 165.09999990463257,
+        "painted": 167
+      },
+      {
+        "frame": 35,
+        "seeked": 144.89999985694885,
+        "painted": 150
+      },
+      {
+        "frame": 31,
+        "seeked": 137.5,
+        "painted": 150.19999980926514
+      },
+      {
+        "frame": 27,
+        "seeked": 117.5,
+        "painted": 133.5
+      },
+      {
+        "frame": 23,
+        "seeked": 99.90000009536743,
+        "painted": 100.10000014305115
+      },
+      {
+        "frame": 19,
+        "seeked": 84.79999995231628,
+        "painted": 99.90000009536743
+      },
+      {
+        "frame": 15,
+        "seeked": 69.79999995231628,
+        "painted": 83.5
+      },
+      {
+        "frame": 11,
+        "seeked": 54.59999990463257,
+        "painted": 66.70000004768372
+      },
+      {
+        "frame": 7,
+        "seeked": 43.5,
+        "painted": 50
+      },
+      {
+        "frame": 3,
+        "seeked": 31.399999856948853,
+        "painted": 33.39999985694885
+      }
+    ]
+  },
+  "gop6": {
+    "label": "GOP 6 crf16",
+    "random": [
+      {
+        "frame": 57,
+        "seeked": 13.400000095367432,
+        "painted": 15.200000047683716
+      },
+      {
+        "frame": 55,
+        "seeked": 12,
+        "painted": 16.700000047683716
+      },
+      {
+        "frame": 50,
+        "seeked": 8.599999904632568,
+        "painted": 16.59999990463257
+      },
+      {
+        "frame": 15,
+        "seeked": 5.099999904632568,
+        "painted": 16.700000047683716
+      },
+      {
+        "frame": 83,
+        "seeked": null,
+        "painted": 33.39999985694885
+      },
+      {
+        "frame": 90,
+        "seeked": null,
+        "painted": 16.800000190734863
+      },
+      {
+        "frame": 34,
+        "seeked": null,
+        "painted": 49.89999985694885
+      },
+      {
+        "frame": 24,
+        "seeked": null,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 29,
+        "seeked": null,
+        "painted": 50.10000014305115
+      },
+      {
+        "frame": 18,
+        "seeked": null,
+        "painted": 16.700000047683716
+      },
+      {
+        "frame": 18,
+        "seeked": 35,
+        "painted": 50.09999990463257
+      },
+      {
+        "frame": 33,
+        "seeked": null,
+        "painted": 16.700000047683716
+      },
+      {
+        "frame": 60,
+        "seeked": 41,
+        "painted": 49.89999985694885
+      },
+      {
+        "frame": 57,
+        "seeked": 22.800000190734863,
+        "painted": 33.40000009536743
+      },
+      {
+        "frame": 7,
+        "seeked": null,
+        "painted": 16.700000047683716
+      },
+      {
+        "frame": 80,
+        "seeked": null,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 93,
+        "seeked": null,
+        "painted": 33.30000019073486
+      },
+      {
+        "frame": 88,
+        "seeked": null,
+        "painted": 50.09999990463257
+      },
+      {
+        "frame": 93,
+        "seeked": null,
+        "painted": 33.30000019073486
+      },
+      {
+        "frame": 89,
+        "seeked": null,
+        "painted": 33.39999985694885
+      }
+    ],
+    "reverse": [
+      {
+        "frame": 95,
+        "seeked": 47.5,
+        "painted": 50
+      },
+      {
+        "frame": 91,
+        "seeked": null,
+        "painted": 16.700000047683716
+      },
+      {
+        "frame": 87,
+        "seeked": 39.200000047683716,
+        "painted": 50.09999990463257
+      },
+      {
+        "frame": 83,
+        "seeked": null,
+        "painted": 33.30000019073486
+      },
+      {
+        "frame": 79,
+        "seeked": null,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 75,
+        "seeked": null,
+        "painted": 34.39999985694885
+      },
+      {
+        "frame": 71,
+        "seeked": null,
+        "painted": 49
+      },
+      {
+        "frame": 67,
+        "seeked": 30.59999990463257,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 63,
+        "seeked": null,
+        "painted": 33.5
+      },
+      {
+        "frame": 59,
+        "seeked": 63.799999952316284,
+        "painted": 66.59999990463257
+      },
+      {
+        "frame": 55,
+        "seeked": null,
+        "painted": 16.800000190734863
+      },
+      {
+        "frame": 51,
+        "seeked": null,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 47,
+        "seeked": null,
+        "painted": 50
+      },
+      {
+        "frame": 43,
+        "seeked": null,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 39,
+        "seeked": null,
+        "painted": 33.5
+      },
+      {
+        "frame": 35,
+        "seeked": null,
+        "painted": 49.90000009536743
+      },
+      {
+        "frame": 31,
+        "seeked": null,
+        "painted": 33.30000019073486
+      },
+      {
+        "frame": 27,
+        "seeked": null,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 23,
+        "seeked": null,
+        "painted": 50
+      },
+      {
+        "frame": 19,
+        "seeked": null,
+        "painted": 33.40000009536743
+      },
+      {
+        "frame": 15,
+        "seeked": null,
+        "painted": 33.39999985694885
+      },
+      {
+        "frame": 11,
+        "seeked": null,
+        "painted": 66.70000004768372
+      },
+      {
+        "frame": 7,
+        "seeked": null,
+        "painted": 16.700000047683716
+      },
+      {
+        "frame": 3,
+        "seeked": null,
+        "painted": 33.40000009536743
+      }
+    ]
+  },
+  "gop12": {
+    "label": "GOP 12 crf16",
+    "random": [
+      {
+        "frame": 57,
+        "seeked": 11.200000047683716,
+        "painted": 19.299999952316284
+      },
+      {
+        "frame": 55,
+        "seeked": 5.299999952316284,
+        "painted": 16.799999952316284
+      },
+      {
+        "frame": 50,
+        "seeked": null,
+        "painted": 33.30000019073486
+      },
+      {
+        "frame": 15,
+        "seeked": null,
+        "painted": 33.5
+      },
+      {
+        "frame": 83,
+        "seeked": 65.69999980926514,
+        "painted": 66.59999990463257
+      },
+      {
+        "frame": 90,
+        "seeked": null,
+        "painted": 50.09999990463257
+      },
+      {
+        "frame": 34,
+        "seeked": 59,
+        "painted": 66.70000004768372
+      },
+      {
+        "frame": 24,
+        "seeked": null,
+        "painted": 16.699999809265137
+      },
+      {
+        "frame": 29,
+        "seeked": 48,
+        "painted": 49.90000009536743
+      },
+      {
+        "frame": 18,
+        "seeked": null,
+        "painted": 33.40000009536743
+      },
+      {
+        "frame": 18,
+        "seeked": null,
+        "painted": 50
+      },
+      {
+        "frame": 33,
+        "seeked": null,
+        "painted": 50
+      },
+      {
+        "frame": 60,
+        "seeked": null,
+        "painted": 16.59999990463257
+      },
+      {
+        "frame": 57,
+        "seeked": 62.5,
+        "painted": 66.80000019073486
+      },
+      {
+        "frame": 7,
+        "seeked": 49.09999990463257,
+        "painted": 50.09999990463257
+      },
+      {
+        "frame": 80,
+        "seeked": null,
+        "painted": 50
+      },
+      {
+        "frame": 93,
+        "seeked": 49.90000009536743,
+        "painted": 50.09999990463257
+      },
+      {
+        "frame": 88,
+        "seeked": null,
+        "painted": 33.30000019073486
+      },
+      {
+        "frame": 93,
+        "seeked": 50.59999990463257,
+        "painted": 66.70000004768372
+      },
+      {
+        "frame": 89,
+        "seeked": null,
+        "painted": 33.299999952316284
+      }
+    ],
+    "reverse": [
+      {
+        "frame": 95,
+        "seeked": 57,
+        "painted": 66.70000004768372
+      },
+      {
+        "frame": 91,
+        "seeked": null,
+        "painted": 33.39999985694885
+      },
+      {
+        "frame": 87,
+        "seeked": 30.5,
+        "painted": 33.30000019073486
+      },
+      {
+        "frame": 83,
+        "seeked": 64,
+        "painted": 66.70000004768372
+      },
+      {
+        "frame": 79,
+        "seeked": null,
+        "painted": 33.39999985694885
+      },
+      {
+        "frame": 75,
+        "seeked": null,
+        "painted": 33.40000009536743
+      },
+      {
+        "frame": 71,
+        "seeked": 63,
+        "painted": 66.70000004768372
+      },
+      {
+        "frame": 67,
+        "seeked": null,
+        "painted": 50.09999990463257
+      },
+      {
+        "frame": 63,
+        "seeked": null,
+        "painted": 16.59999990463257
+      },
+      {
+        "frame": 59,
+        "seeked": 61.90000009536743,
+        "painted": 66.70000004768372
+      },
+      {
+        "frame": 55,
+        "seeked": 46.200000047683716,
+        "painted": 50.09999990463257
+      },
+      {
+        "frame": 51,
+        "seeked": null,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 47,
+        "seeked": 69.80000019073486,
+        "painted": 83.40000009536743
+      },
+      {
+        "frame": 43,
+        "seeked": null,
+        "painted": 50
+      },
+      {
+        "frame": 39,
+        "seeked": null,
+        "painted": 33.40000009536743
+      },
+      {
+        "frame": 35,
+        "seeked": 57.5,
+        "painted": 66.69999980926514
+      },
+      {
+        "frame": 31,
+        "seeked": null,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 27,
+        "seeked": null,
+        "painted": 33.40000009536743
+      },
+      {
+        "frame": 23,
+        "seeked": 63.799999952316284,
+        "painted": 66.69999980926514
+      },
+      {
+        "frame": 19,
+        "seeked": null,
+        "painted": 50.10000014305115
+      },
+      {
+        "frame": 15,
+        "seeked": null,
+        "painted": 16.799999952316284
+      },
+      {
+        "frame": 11,
+        "seeked": 60.09999990463257,
+        "painted": 66.70000004768372
+      },
+      {
+        "frame": 7,
+        "seeked": 43.89999985694885,
+        "painted": 50
+      },
+      {
+        "frame": 3,
+        "seeked": null,
+        "painted": 33.299999952316284
+      }
+    ]
+  },
+  "gop6c20": {
+    "label": "GOP 6 crf20",
+    "random": [
+      {
+        "frame": 57,
+        "seeked": 5.800000190734863,
+        "painted": 14.300000190734863
+      },
+      {
+        "frame": 55,
+        "seeked": 3.5999999046325684,
+        "painted": 16.59999990463257
+      },
+      {
+        "frame": 50,
+        "seeked": 3.200000047683716,
+        "painted": 16.700000047683716
+      },
+      {
+        "frame": 15,
+        "seeked": 9,
+        "painted": 16.700000047683716
+      },
+      {
+        "frame": 83,
+        "seeked": null,
+        "painted": 50.09999990463257
+      },
+      {
+        "frame": 90,
+        "seeked": null,
+        "painted": 16.59999990463257
+      },
+      {
+        "frame": 34,
+        "seeked": null,
+        "painted": 33.40000009536743
+      },
+      {
+        "frame": 24,
+        "seeked": null,
+        "painted": 16.700000047683716
+      },
+      {
+        "frame": 29,
+        "seeked": null,
+        "painted": 50
+      },
+      {
+        "frame": 18,
+        "seeked": 19.700000047683716,
+        "painted": 33.39999985694885
+      },
+      {
+        "frame": 18,
+        "seeked": 0.3000001907348633,
+        "painted": null
+      },
+      {
+        "frame": 33,
+        "seeked": 2.299999952316284,
+        "painted": 16.799999952316284
+      },
+      {
+        "frame": 60,
+        "seeked": 1.4000000953674316,
+        "painted": 16.200000047683716
+      },
+      {
+        "frame": 57,
+        "seeked": 2.9000000953674316,
+        "painted": 16.700000047683716
+      },
+      {
+        "frame": 7,
+        "seeked": 3,
+        "painted": 16.600000143051147
+      },
+      {
+        "frame": 80,
+        "seeked": null,
+        "painted": 33.39999985694885
+      },
+      {
+        "frame": 93,
+        "seeked": null,
+        "painted": 66.70000004768372
+      },
+      {
+        "frame": 88,
+        "seeked": 47.09999990463257,
+        "painted": 50
+      },
+      {
+        "frame": 93,
+        "seeked": null,
+        "painted": 33.40000009536743
+      },
+      {
+        "frame": 89,
+        "seeked": null,
+        "painted": 33.39999985694885
+      }
+    ],
+    "reverse": [
+      {
+        "frame": 95,
+        "seeked": null,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 91,
+        "seeked": null,
+        "painted": 16.700000047683716
+      },
+      {
+        "frame": 87,
+        "seeked": 32.200000047683716,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 83,
+        "seeked": 43.80000019073486,
+        "painted": 50.10000014305115
+      },
+      {
+        "frame": 79,
+        "seeked": 23,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 75,
+        "seeked": 29,
+        "painted": 33.40000009536743
+      },
+      {
+        "frame": 71,
+        "seeked": null,
+        "painted": 33.39999985694885
+      },
+      {
+        "frame": 67,
+        "seeked": null,
+        "painted": 33.40000009536743
+      },
+      {
+        "frame": 63,
+        "seeked": null,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 59,
+        "seeked": null,
+        "painted": 33.40000009536743
+      },
+      {
+        "frame": 55,
+        "seeked": 31.799999952316284,
+        "painted": 33.39999985694885
+      },
+      {
+        "frame": 51,
+        "seeked": null,
+        "painted": 33.40000009536743
+      },
+      {
+        "frame": 47,
+        "seeked": null,
+        "painted": 50.09999990463257
+      },
+      {
+        "frame": 43,
+        "seeked": null,
+        "painted": 16.600000143051147
+      },
+      {
+        "frame": 39,
+        "seeked": null,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 35,
+        "seeked": null,
+        "painted": 50.200000047683716
+      },
+      {
+        "frame": 31,
+        "seeked": 26.899999856948853,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 27,
+        "seeked": null,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 23,
+        "seeked": 45,
+        "painted": 50.09999990463257
+      },
+      {
+        "frame": 19,
+        "seeked": null,
+        "painted": 16.700000047683716
+      },
+      {
+        "frame": 15,
+        "seeked": null,
+        "painted": 33.299999952316284
+      },
+      {
+        "frame": 11,
+        "seeked": null,
+        "painted": 33.40000009536743
+      },
+      {
+        "frame": 7,
+        "seeked": 31.90000009536743,
+        "painted": 33.40000009536743
+      },
+      {
+        "frame": 3,
+        "seeked": null,
+        "painted": 33.299999952316284
+      }
+    ]
+  }
+}

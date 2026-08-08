@@ -1,0 +1,176 @@
+{
+  "results": [
+    {
+      "id": "A-nativo",
+      "q": {
+        "mode": "B",
+        "vsrc": "tv"
+      },
+      "label": "vídeo nativo <video>",
+      "windowSeconds": 8,
+      "fps": 60,
+      "raf": {
+        "p50": 16.699999999999818,
+        "p95": 16.800000000000182,
+        "p99": 16.900000000000546,
+        "max": 17.09999999999991,
+        "n": 480
+      },
+      "jank": 0,
+      "severe": 0,
+      "jankPct": 0,
+      "draw": {
+        "mean": 0.004583332935969035,
+        "p95": 0,
+        "max": 0.10000014305114746
+      },
+      "gpu": null,
+      "video": {
+        "presented": 192,
+        "total": 191,
+        "dropped": 0,
+        "dropPct": 0
+      },
+      "cpu": {
+        "taskDurationMs": 95.073,
+        "scriptDurationMs": 22.917000000000005,
+        "layoutDurationMs": 0,
+        "jsHeapMB": 13.330181121826172
+      },
+      "glRenderer": null
+    },
+    {
+      "id": "B-canvas2d",
+      "q": {
+        "mode": "C",
+        "vsrc": "tv",
+        "sq": "high"
+      },
+      "label": "Canvas 2D",
+      "windowSeconds": 8,
+      "fps": 60,
+      "raf": {
+        "p50": 16.699999999999818,
+        "p95": 16.800000000000182,
+        "p99": 16.90000000000009,
+        "max": 17,
+        "n": 480
+      },
+      "jank": 0,
+      "severe": 0,
+      "jankPct": 0,
+      "draw": {
+        "mean": 0.1231249988079071,
+        "p95": 0.20000004768371582,
+        "max": 1.3999998569488525
+      },
+      "gpu": null,
+      "video": {
+        "presented": 192,
+        "total": 192,
+        "dropped": 0,
+        "dropPct": 0
+      },
+      "cpu": {
+        "taskDurationMs": 176.13899999999998,
+        "scriptDurationMs": 79.17299999999999,
+        "layoutDurationMs": 0,
+        "jsHeapMB": 13.414039611816406
+      },
+      "glRenderer": null
+    },
+    {
+      "id": "C-webgl",
+      "q": {
+        "mode": "D",
+        "vsrc": "tv",
+        "glq": "lanczos",
+        "sharpen": "0"
+      },
+      "label": "WebGL sem sharpen",
+      "windowSeconds": 8,
+      "fps": 59.875,
+      "raf": {
+        "p50": 16.699999999999818,
+        "p95": 16.800000000000182,
+        "p99": 16.899999999999636,
+        "max": 17,
+        "n": 479
+      },
+      "jank": 0,
+      "severe": 0,
+      "jankPct": 0,
+      "draw": {
+        "mean": 0.2377870486026517,
+        "p95": 0.40000009536743164,
+        "max": 1.4000000953674316
+      },
+      "gpu": {
+        "mean": 4.002593975903611,
+        "p95": 5.07632,
+        "max": 12.1598,
+        "n": 249
+      },
+      "video": {
+        "presented": 192,
+        "total": 191,
+        "dropped": 0,
+        "dropPct": 0
+      },
+      "cpu": {
+        "taskDurationMs": 252.23900000000003,
+        "scriptDurationMs": 136.782,
+        "layoutDurationMs": 0,
+        "jsHeapMB": 13.86181640625
+      },
+      "glRenderer": "ANGLE (AMD, AMD Radeon RX 6600 (0x000073FF) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    },
+    {
+      "id": "D-webgl-sharp",
+      "q": {
+        "mode": "D",
+        "vsrc": "tv",
+        "glq": "lanczos",
+        "sharpen": "0.25"
+      },
+      "label": "WebGL sharpen 0,25",
+      "windowSeconds": 8,
+      "fps": 60,
+      "raf": {
+        "p50": 16.699999999999818,
+        "p95": 16.800000000000182,
+        "p99": 16.80000000000109,
+        "max": 17,
+        "n": 480
+      },
+      "jank": 0,
+      "severe": 0,
+      "jankPct": 0,
+      "draw": {
+        "mean": 0.18833333055178325,
+        "p95": 0.3000001907348633,
+        "max": 0.6000001430511475
+      },
+      "gpu": {
+        "mean": 3.8368896249999986,
+        "p95": 4.54232,
+        "max": 8.62973,
+        "n": 480
+      },
+      "video": {
+        "presented": 192,
+        "total": 192,
+        "dropped": 0,
+        "dropPct": 0
+      },
+      "cpu": {
+        "taskDurationMs": 224.06699999999998,
+        "scriptDurationMs": 111.05900000000001,
+        "layoutDurationMs": 0,
+        "jsHeapMB": 14.40771484375
+      },
+      "glRenderer": "ANGLE (AMD, AMD Radeon RX 6600 (0x000073FF) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    }
+  ],
+  "errors": []
+}

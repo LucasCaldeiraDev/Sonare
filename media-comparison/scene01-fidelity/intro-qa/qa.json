@@ -1,0 +1,50 @@
+[
+  {
+    "mode": "frio",
+    "run": 1,
+    "states": 2,
+    "sequence": "poster -> video",
+    "posterLuma": 61.642,
+    "videoLuma": 62.977,
+    "firstVideoAt": 713.6,
+    "currentTime": 0.14583,
+    "blackSamples": 0,
+    "errors": 0
+  },
+  {
+    "mode": "frio",
+    "run": 2,
+    "states": 2,
+    "sequence": "poster -> video",
+    "posterLuma": 61.642,
+    "videoLuma": 62.977,
+    "firstVideoAt": 614.9,
+    "currentTime": 0.14583,
+    "blackSamples": 0,
+    "errors": 0
+  },
+  {
+    "mode": "quente",
+    "run": 1,
+    "states": 2,
+    "sequence": "poster -> video",
+    "posterLuma": 61.642,
+    "videoLuma": 62.977,
+    "firstVideoAt": 599.7,
+    "currentTime": 0.14583,
+    "blackSamples": 0,
+    "errors": 0
+  },
+  {
+    "mode": "quente",
+    "run": 2,
+    "states": 2,
+    "sequence": "poster -> video",
+    "posterLuma": 61.642,
+    "videoLuma": 62.977,
+    "firstVideoAt": 610.2,
+    "currentTime": 0.14583,
+    "blackSamples": 0,
+    "errors": 0
+  }
+]

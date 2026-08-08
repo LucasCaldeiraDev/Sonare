@@ -1,6 +1,25 @@
 export type OverlayPosition = "bottom-left" | "bottom-right" | "top-left" | "top-right";
 
 /**
+ * Where the equipment a chip describes sits INSIDE THE SOURCE FRAME, in percent
+ * of the 3840x2160 picture — not of the viewport. The card maps these through
+ * the same centre-anchored cover crop the canvas uses, so the marker lands on
+ * the same pixels at any window size, and hides itself if the crop cuts them.
+ *
+ * Coordinates were read off extracted frames of the actual footage at each
+ * card's window (media in playback order, times local to the scene file).
+ * x2/y2, when present, is where the equipment ends up by the END of the window:
+ * the dot interpolates between the two as the camera travels. Windows whose
+ * shot is static get a single point.
+ */
+export type OverlayAnchor = {
+  x: number;
+  y: number;
+  x2?: number;
+  y2?: number;
+};
+
+/**
  * A timed caption. Times are GLOBAL — seconds on the single journey, not
  * per-segment. Segment boundaries are invisible to overlays, so nothing can
  * blink or restart when the underlying file changes.
@@ -17,6 +36,8 @@ export type Overlay = {
   equipment?: string;
   position: OverlayPosition;
   positionMobile?: OverlayPosition;
+  /** Equipment chips only: where in the frame the described gear actually is. */
+  anchor?: OverlayAnchor;
 };
 
 export type Segment = {
@@ -180,8 +201,19 @@ export const pickMediaVariant = (): MediaVariant => {
   return "1440p";
 };
 
-/** Resolved once per load; the controller must not change source mid-gesture. */
-export const MEDIA_VARIANT: MediaVariant = temporalMedia48 ? pickMediaVariant() : "4k";
+/**
+ * Resolved once per load; the controller must not change source mid-gesture.
+ *
+ * LIVE IN PRODUCTION as of 2026-08-08 — this used to be pinned to "4k" with
+ * pickMediaVariant() reserved for the 48 fps experiment. The v3 master swap
+ * made the 4K set markedly heavier (scene 02 forward alone: 39.8 MB), which
+ * surfaced as a felt hitch at scene crossings, so the 1440p/1080p GOP-6
+ * derivatives were generated from the current masters with the exact house
+ * recipe (x264 slow, CRF 20, keyint 6, BT.709 tv, faststart; frame counts
+ * verified identical per file) and the selection was switched on. Screens
+ * whose backing store exceeds 2560 px still receive 4K untouched.
+ */
+export const MEDIA_VARIANT: MediaVariant = pickMediaVariant();
 
 const variantSuffix = () =>
   MEDIA_VARIANT === "4k" ? "4k-bt709-tv-48fps" : `${MEDIA_VARIANT}-48fps`;
@@ -191,7 +223,7 @@ const reverseMediaFor = (scene: string) =>
     ? mediaFor(scene)
     : temporalMedia48
       ? `/media-comparison/interp/out/scene-${scene}-${variantSuffix()}-reverse.mp4`
-      : `/media/web/scene-${scene}-4k-bt709-tv-gop6-reverse.mp4`;
+      : `/media/web/scene-${scene}-${MEDIA_VARIANT}-bt709-tv-gop6-reverse.mp4`;
 
 const mediaFor = (scene: string) =>
   useOriginalMedia
@@ -202,7 +234,7 @@ const mediaFor = (scene: string) =>
       `/media-comparison/source-archive/remux-tv/scene-${scene}-4k-bt709-tv.mp4`
     : temporalMedia48
       ? `/media-comparison/interp/out/scene-${scene}-${variantSuffix()}.mp4`
-      : `/media/web/scene-${scene}-4k-bt709-tv-gop6.mp4`;
+      : `/media/web/scene-${scene}-${MEDIA_VARIANT}-bt709-tv-gop6.mp4`;
 
 /**
  * The five scenes. Nothing is merged, cropped, scaled or re-timed.
@@ -353,6 +385,31 @@ export const SEGMENT_START_FRAME = [0, 193, 434, 627, 820];
 const AUTHORED_OVERLAYS: Overlay[] = [
   {
     /**
+     * Segment 1, inside the "luzes internas em cena de chegada" status beat
+     * (frame 96 / 4.0s onward — see systemStatus.ts). The hero has fully
+     * faded by t=2.0s, so this opens on clear screen and closes with margin
+     * before the segment 2 cut, rather than fighting the hero or the SIM2
+     * card for space.
+     *
+     * Bottom-left to match this dataset's own convention: every other
+     * narrative-kind card (s110-1, s110-2, s110-3) sits bottom-left, and it
+     * is the same corner the hero just spoke from — the "voice" continues
+     * from where it left off instead of jumping across the frame.
+     */
+    id: "fachada-boasvindas",
+    kind: "narrative",
+    // seg1 local 4.30–7.70
+    globalStart: 4.3,
+    globalEnd: 7.7,
+    eyebrow: "Chegada",
+    title: "Seja bem-vindo",
+    description:
+      "A Sonare antecipa cada chegada: balizadores, paisagismo e luzes internas se acendem no tempo certo para receber você.",
+    descriptionMobile: "Balizadores, paisagismo e luzes internas se acendem no tempo certo para receber você.",
+    position: "bottom-left",
+  },
+  {
+    /**
      * Late in segment 2, not at its cut.
      *
      * The card has followed the hardware through two re-cuts now. Segment 02 no
@@ -374,6 +431,9 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     descriptionMobile:
       "Projeção dedicada integrada à arquitetura, sem interferir na estética do ambiente.",
     position: "top-right",
+    // Frames s02 t6.2→t8.4: the projector hangs at top-centre and rises in
+    // frame as the camera enters the theatre.
+    anchor: { x: 50.5, y: 19, x2: 50, y2: 11.5 },
   },
   {
     /**
@@ -400,6 +460,8 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     // Over the coffee table, where the frame is quietest and the card does not
     // cover the towers it is describing.
     position: "bottom-left",
+    // Frames s02 t7.3→t9.4: the left 800-series tower, nearest the card.
+    anchor: { x: 30, y: 61, x2: 28, y2: 64 },
   },
   {
     // seg2 local 9.40 → seg3 local 1.40. Crosses the cut on purpose: the
@@ -415,6 +477,9 @@ const AUTHORED_OVERLAYS: Overlay[] = [
       "A arquitetura dos gabinetes e o Tweeter-on-Top ajudam a controlar ressonâncias e preservar clareza, foco e imagem sonora.",
     descriptionMobile: "Gabinetes e Tweeter-on-Top preservam clareza, foco e imagem sonora.",
     position: "bottom-right",
+    // Frames s02 t9.4 / s03 t0.7 — near-static shot. The dot sits on the right
+    // tower's Tweeter-on-Top, which is the exact feature the copy names.
+    anchor: { x: 73, y: 55 },
   },
   {
     // seg3 local 4.60–6.50, once the camera has left the screen and the wall
@@ -475,6 +540,9 @@ const AUTHORED_OVERLAYS: Overlay[] = [
       "Luz indireta em sanca, fitas sob a marcenaria e spots embutidos compõem a cena sem aparelho à vista.",
     descriptionMobile: "Sanca, fitas sob a marcenaria e spots embutidos, sem aparelho à vista.",
     position: "bottom-right",
+    // Frames s04 t3.9→t6.6: the camera dollies out of the corridor, so the
+    // cove line travels — the two points ride its corner above the curtains.
+    anchor: { x: 82, y: 15, x2: 74, y2: 27 },
   },
   {
     // seg5 local 0.80–4.60, acompanhando a abertura das cortinas de ponta a
@@ -489,6 +557,9 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     description: "A abertura acompanha a cena escolhida e entrega a vista da cidade no tempo certo.",
     descriptionMobile: "A abertura acompanha a cena e entrega a vista no tempo certo.",
     position: "bottom-right",
+    // Frames s05 t0.8→t4.6: the right-hand curtain panel keeps this point
+    // through the whole opening move, so a single anchor is enough.
+    anchor: { x: 78, y: 46 },
   },
   // 38.77 → 42.21: skyline limpo, depois o encerramento de marca
 ];

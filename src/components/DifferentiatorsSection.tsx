@@ -1,5 +1,4 @@
 import { differentiators, process } from "../content/copy";
-import { SectionHeading } from "./SectionHeading";
 
 /**
  * The single light band of the page: authority (differentiators) and the

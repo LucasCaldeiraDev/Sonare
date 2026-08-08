@@ -4,7 +4,7 @@ import { brand, projectTypes } from "../content/copy";
 import { buildWhatsappLeadUrl } from "../lib/whatsapp";
 
 const inputClasses =
-  "w-full rounded-md border border-white/15 bg-white/[0.04] px-4 py-3 text-[0.95rem] text-sonare-white placeholder:text-sonare-silver/40 focus:border-sonare-gold focus:outline-none";
+  "w-full rounded-md border border-white/15 bg-white/[0.04] px-4 py-3 text-[0.95rem] text-sonare-white placeholder:text-sonare-silver/60 focus:border-sonare-gold focus:outline-none";
 
 /**
  * Lead capture without a backend: the form composes a pre-filled WhatsApp

@@ -57,7 +57,7 @@ export function S110Section() {
             loading="lazy"
             decoding="async"
           />
-          <figcaption className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-5 pb-4 pt-10 text-[0.78rem] tracking-wide text-sonare-silver">
+          <figcaption className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-sonare-black/70 to-transparent px-5 pb-4 pt-10 text-[0.78rem] tracking-wide text-sonare-silver">
             S110 em instalação embutida — a interface acompanha a parede, não o contrário.
           </figcaption>
         </figure>

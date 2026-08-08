@@ -1,0 +1,13 @@
+{
+  "name": "Sonare — Automação Residencial, Áudio e Vídeo Premium",
+  "short_name": "Sonare",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#000000",
+  "theme_color": "#141414",
+  "icons": [
+    { "src": "/brand/sonare-mark-64.png", "sizes": "64x64", "type": "image/png" },
+    { "src": "/brand/sonare-mark-192.png", "sizes": "192x192", "type": "image/png" }
+  ]
+}

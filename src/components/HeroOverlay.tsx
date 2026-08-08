@@ -44,13 +44,22 @@ export function HeroOverlay({ compact = false }: { compact?: boolean }) {
             Conhecer a experiência
           </a>
         </div>
-        {!compact && (
-          <p className="mt-10 inline-flex items-center gap-2 text-[0.75rem] uppercase tracking-[0.2em] text-sonare-silver/70">
-            <ArrowDown size={14} aria-hidden="true" />
-            Role para entrar
-          </p>
-        )}
       </div>
+
+      {/* Centered on the full viewport and pinned low, deliberately outside the
+          left-aligned copy column: a scroll affordance reads as an instruction
+          to the whole screen, not as one more line trailing the CTAs. The bob
+          is the same cue a mouse-wheel glyph gives — motion reads as "do this"
+          faster than static text — and collapses under prefers-reduced-motion
+          via the global rule in styles.css, so no separate code path is needed. */}
+      {!compact && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-2 sm:bottom-8">
+          <span className="text-[0.72rem] uppercase tracking-[0.2em] text-sonare-silver/70">
+            Role para entrar
+          </span>
+          <ArrowDown size={16} aria-hidden="true" className="animate-bounce text-sonare-silver/70" />
+        </div>
+      )}
     </div>
   );
 }

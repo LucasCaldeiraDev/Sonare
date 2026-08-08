@@ -6,6 +6,7 @@ import {
   GLOBAL_FRAMES,
   MEDIA_EPS,
   MEDIA_FPS,
+  MEDIA_SCALE,
   OVERLAYS,
   SCROLL_VH_PER_SECOND,
   SEGMENTS,
@@ -31,8 +32,20 @@ type CanvasNarrativeProps = {
   debug?: boolean;
 };
 
-/** How early (in frames) the next segment is warmed up. */
-const PRELOAD_LEAD_FRAMES = 48;
+/**
+ * How early (in frames) the next segment is warmed up.
+ *
+ * Raised from 48 after the 2026-08-08 v3 master swap: several derivatives got
+ * markedly heavier at the same GOP-6/CRF settings (scene 02 forward alone went
+ * 14.0 MB -> 39.8 MB), which means more bytes to fetch and more to decode
+ * before the incoming track can confirm the boundary frame. HANDOVER_MAX_MS
+ * hides a short miss by holding the outgoing frame, but it cannot hide a miss
+ * it was never given time to prevent — more lead acts before the gate has to.
+ * This value is a proportional guess (~1.75x), not a re-measurement: it has
+ * not been run through media-comparison/scene01-fidelity/tools/boundary-bench.mjs
+ * against the new masters, which is the tool to confirm or retune it with.
+ */
+const PRELOAD_LEAD_FRAMES = 84;
 /** Canvas is capped at this device pixel ratio to keep compositing cheap. */
 const MAX_DPR = 2;
 /**
@@ -177,6 +190,41 @@ const ARM_REFRESH_FRAMES = 10;
 const HANDOVER_MAX_MS = 250;
 
 /**
+ * Pre-roll: how many story frames before a boundary the INCOMING element
+ * starts PLAYING — not merely sitting armed on its entry frame.
+ *
+ * Motivated by measurement, 2026-08-08, on the 1440p set: the handover gate
+ * holds for only 17–50 ms at every crossing (boundary-hold bench, 10 cases),
+ * yet the worst visually-new-frame gap around a crossing is a near-constant
+ * ~283 ms, in both directions, at every speed — and `?standby=off` does not
+ * move it. That signature is not the gate and not standby seeks; it is the
+ * play() pipeline start of the incoming element, paid exactly at the cut.
+ *
+ * The relay-runner rule instead: the incoming starts rolling at RATE_MIN
+ * (0.08x) a beat before the baton arrives, so the crossing becomes a rate
+ * change on an element that is ALREADY streaming — the one transition this
+ * whole controller is built around being smooth.
+ *
+ * At 0.08x the element advances ~1.9 media frames per second, so over the
+ * longest plausible approach (these 12 story frames at a 0.5x crawl, ~1 s)
+ * it drifts under 2 frames past its entry — inside HANDOVER_AHEAD_FRAMES,
+ * which is what keeps the gate's arithmetic untouched. A cap 3 frames past
+ * entry reins in the pathological crawl case rather than letting the roll
+ * run away from the story.
+ *
+ * Outcome, same bench, same day: slow crossings dropped to the bench
+ * environment's own noise floor (117 ms worst against a 100 ms no-boundary
+ * control), gate holds stayed ≤ 52 ms with zero forced switches across 30
+ * crossings, and the reverse direction was unaffected. Medium-speed
+ * crossings could not be resolved there — headless software decode has a
+ * ~250 ms stall floor at that scroll rate with no boundary in sight — so
+ * their verdict belongs to real hardware, where `?preroll=off` remains the
+ * live A/B.
+ */
+const PREROLL_LEAD_FRAMES = 12;
+const PREROLL_MAX_AHEAD_FRAMES = 3;
+
+/**
  * `?playhead=seek` restores the old seek-per-frame model for A/B measurement.
  * Folded away in production builds, so the shipped bundle only ever has the
  * rate-steered path.
@@ -213,6 +261,13 @@ const legacyReverseMode =
  */
 const standbyOff =
   import.meta.env.DEV && new URLSearchParams(window.location.search).get("standby") === "off";
+/**
+ * `?preroll=off` parks the incoming element until the crossing, as before
+ * 2026-08-08 — the A/B for measuring the pipeline-start gap the pre-roll
+ * exists to remove.
+ */
+const prerollOff =
+  import.meta.env.DEV && new URLSearchParams(window.location.search).get("preroll") === "off";
 /**
  * `?surface=native` shows the active <video> directly, full size and properly
  * composited, instead of drawing it into the canvas.
@@ -688,6 +743,8 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
       | "scroll-settled"
       | "gap-forward"
       | "overshoot"
+      | "preroll"
+      | "preroll-cap"
       | "inactive-track";
     const pb = {
       events: [] as Record<string, unknown>[],
@@ -1009,6 +1066,8 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
     /** When the last recovery seek was issued, and how many there have been. */
     let lastRecoveryAt = 0;
     let recoveries = 0;
+    /** Pre-rolls started, for the bench. */
+    let prerollStarts = 0;
 
     /**
      * Direction state, with hysteresis.
@@ -1045,6 +1104,7 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
     const vis = {
       rateChanges: () => rateChanges,
       syncSeeks: () => syncSeeks,
+      prerolls: () => prerollStarts,
       newFrameAt: [] as number[],
       uniqueFrames: 0,
       redraws: 0,
@@ -1157,19 +1217,68 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
       const activeFrame = frameFor(index, rep, localFrame);
 
       drivePlayhead(activeTrack, activeFrame, motion);
-      // Only the active track may advance; anything else left playing would
-      // drift away from where the gesture expects to find it.
+
+      const segStart = SEGMENT_START_FRAME[index];
+      const segEnd = segStart + SEGMENTS[index].frames;
+
+      /**
+       * Pre-roll (see PREROLL_LEAD_FRAMES). Close to a boundary, moving toward
+       * it, the incoming element is nudged into playback at RATE_MIN so the
+       * crossing finds a hot pipeline. Conditions are deliberately narrow: a
+       * confirmed intro, a real gesture, an element whose armed seek has
+       * landed at (or near) its entry — a track parked elsewhere must not
+       * start streaming from the wrong place.
+       */
+      let prerollTrack = -1;
+      if (!prerollOff && introConfirmedRef.current && motion === "moving") {
+        let candidate = -1;
+        let entryMedia = -1;
+        if (direction > 0 && index + 1 < SEGMENTS.length && gf >= segEnd - PREROLL_LEAD_FRAMES) {
+          candidate = trackOf(index + 1, rep);
+          entryMedia = frameFor(index + 1, rep, SEGMENTS[index + 1].offsetFrames);
+        } else if (direction < 0 && index - 1 >= 0 && gf <= segStart + PREROLL_LEAD_FRAMES) {
+          const prev = SEGMENTS[index - 1];
+          candidate = trackOf(index - 1, rep);
+          entryMedia = frameFor(index - 1, rep, prev.offsetFrames + prev.frames - 1);
+        }
+        if (candidate >= 0) {
+          const pv2 = elementOf(candidate);
+          const pf = presentedFrame[candidate];
+          const cap = entryMedia + PREROLL_MAX_AHEAD_FRAMES * MEDIA_SCALE;
+          if (pv2 && pv2.readyState >= 2 && !seeking[candidate] && pf >= 0) {
+            if (pf > cap) {
+              // The roll outran its allowance (a crawl approach): hold it.
+              if (!pv2.paused) {
+                playbackLog("pause", "preroll-cap", candidate, 0, pv2);
+                pv2.pause();
+              }
+            } else if (pf >= entryMedia - PREROLL_MAX_AHEAD_FRAMES * MEDIA_SCALE) {
+              prerollTrack = candidate;
+              if (pv2.paused) {
+                setRate(pv2, RATE_MIN);
+                playbackLog("play", "preroll", candidate, 0, pv2);
+                const p = pv2.play();
+                if (p && typeof p.catch === "function") p.catch(() => {});
+                prerollStarts += 1;
+              }
+            }
+          }
+        }
+      }
+
+      // Only the active track may advance — with one exception: a pre-rolling
+      // track is deliberately creeping at the floor rate so the next crossing
+      // is a rate change instead of a pipeline start. Anything else left
+      // playing would drift away from where the gesture expects to find it.
       for (let t = 0; t < TRACKS; t++) {
         const other = elementOf(t);
-        if (t !== activeTrack && other && !other.paused) {
+        if (t !== activeTrack && t !== prerollTrack && other && !other.paused) {
           playbackLog("pause", "inactive-track", t, 0, other);
           other.pause();
         }
       }
 
       warm(activeTrack);
-      const segStart = SEGMENT_START_FRAME[index];
-      const segEnd = segStart + SEGMENTS[index].frames;
 
       // The opposite representation of THIS segment, armed where a reversal
       // would land — this is what makes the first reversal cost one seek that

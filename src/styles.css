@@ -148,6 +148,27 @@
     translate: 0 0;
   }
 
+  /* The equipment anchor: a gold point pulsing over the exact gear the chip
+     describes. box-shadow only — opacity/transform on anything inside the
+     overlay root belongs to GSAP, and box-shadow is the one channel neither
+     system claims. Collapses to a static dot under prefers-reduced-motion via
+     the global rule above. */
+  .anchor-dot {
+    animation: sonare-anchor-pulse 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes sonare-anchor-pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(207, 159, 82, 0.45);
+    }
+    70% {
+      box-shadow: 0 0 0 14px rgba(207, 159, 82, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(207, 159, 82, 0);
+    }
+  }
+
   .skip-link {
     position: fixed;
     top: -100%;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { brand } from "../content/copy";
 
@@ -14,6 +14,8 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [active, setActive] = useState<string | null>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -43,10 +45,35 @@ export function Navbar() {
     return () => observer.disconnect();
   }, []);
 
+  // While the panel is open, keyboard focus stays inside the header: first
+  // link focused on open, Tab wraps between the toggle and the panel's last
+  // item, Escape closes and returns focus to the toggle. Without this a
+  // keyboard user tabs straight through into content the panel is covering.
   useEffect(() => {
     if (!menuOpen) return;
+    const header = headerRef.current;
+    header?.querySelector<HTMLElement>("#mobile-menu a")?.focus();
+
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        toggleRef.current?.focus();
+        return;
+      }
+      if (event.key !== "Tab" || !header) return;
+      const focusables = header.querySelectorAll<HTMLElement>(
+        'button[aria-controls="mobile-menu"], #mobile-menu a',
+      );
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -54,6 +81,7 @@ export function Navbar() {
 
   return (
     <header
+      ref={headerRef}
       className={`fixed inset-x-0 top-0 z-50 transition-colors duration-500 ${
         scrolled || menuOpen
           ? "border-b border-white/10 bg-sonare-ink/90 backdrop-blur-md"
@@ -105,6 +133,7 @@ export function Navbar() {
 
         <button
           type="button"
+          ref={toggleRef}
           className="inline-flex h-11 w-11 items-center justify-center text-sonare-white lg:hidden"
           aria-expanded={menuOpen}
           aria-controls="mobile-menu"

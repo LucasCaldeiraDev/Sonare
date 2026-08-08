@@ -46,7 +46,7 @@ export function ClosingSection() {
         loading="lazy"
         decoding="async"
       />
-      <div aria-hidden="true" className="absolute inset-0 bg-black/45" />
+      <div aria-hidden="true" className="absolute inset-0 bg-sonare-black/45" />
       <div className="relative z-10 py-20">
         <ClosingContent />
       </div>

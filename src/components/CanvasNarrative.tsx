@@ -133,6 +133,19 @@ const rateCeiling = () => Math.min(3, Math.max(1, refreshHz / MEDIA_FPS));
 const RECOVERY_GAP = 0.5;
 /** Never chain recovery seeks faster than one can plausibly land. */
 const RECOVERY_MIN_MS = 150;
+/**
+ * Above this story-rate the target is mid-sweep and no seek can land on it:
+ * by the time a GOP-6 seek completes (~40 ms), a 10x target has moved four
+ * frames past where the seek was aimed, so the chain of "recoveries" only
+ * blanks the canvas 30-50 ms at a time — measured as 190-250 ms gaps inside
+ * an 800 ms flick. Sitting just above the physical rate ceiling
+ * (min(3, refresh/24)) makes the two flip together: while playing could
+ * conceivably track the target, seeks chase it; once the target outruns any
+ * possible playback, the element simply runs at the ceiling — which reads as
+ * the fast-forward the gesture asked for — and the one seek that matters
+ * fires when the sweep decelerates back under this line.
+ */
+const RECOVERY_MAX_VEL = 3.0;
 /** The gesture must be still this long before a resync seek is allowed. */
 const SETTLE_MS = 140;
 /**
@@ -999,7 +1012,11 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
          * controller takes over from there. Rate-limited, because a recovery
          * seek that has not landed yet cannot be improved by issuing another.
          */
-        if (delta > RECOVERY_GAP && performance.now() - lastRecoveryAt > RECOVERY_MIN_MS) {
+        if (
+          delta > RECOVERY_GAP &&
+          targetVelocity < RECOVERY_MAX_VEL &&
+          performance.now() - lastRecoveryAt > RECOVERY_MIN_MS
+        ) {
           lastRecoveryAt = performance.now();
           recoveries += 1;
           seekTo(track, mediaFrame);
@@ -1018,9 +1035,23 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
          * Seeding the rate with how fast the story is already advancing means a
          * new segment picks up at the speed the old one was running.
          */
+        /**
+         * Tail floor, from the settling trace of 2026-08-08: when a gesture
+         * lands, targetVelocity collapses ahead of the remaining gap, so
+         * vel + delta/TAU decays the rate to a 0.2-0.5x crawl exactly while
+         * three to five frames are still owed — measured as 123-314 ms
+         * inter-frame gaps right after every energetic stop, which is the
+         * "travadinha" felt at the end of a fast scroll. While more than two
+         * frames are owed the shot is still visibly in motion, and finishing
+         * it slower than real time reads as a freeze; the floor holds 1x
+         * until the debt is nearly settled, then the ordinary formula eases
+         * the shot to rest. Steady slow scrolling never trips it: there the
+         * equilibrium gap sits well under two frames.
+         */
+        const tailFloor = delta > 2 / FPS ? 1 : RATE_MIN;
         const rate = fixedRate
           ? fixedRate
-          : Math.min(rateCeiling(), Math.max(RATE_MIN, targetVelocity + delta / RATE_TAU));
+          : Math.min(rateCeiling(), Math.max(tailFloor, targetVelocity + delta / RATE_TAU));
         rateChanges += Math.abs(v.playbackRate - rate) > 0.02 ? 1 : 0;
         if (Math.abs(v.playbackRate - rate) > 0.02) v.playbackRate = rate;
         if (v.paused) {
@@ -1299,7 +1330,12 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
          */
         const oppLocal = presentedLogical(index, oppRep, presentedFrame[oppTrack]);
         const adrift = oppLocal < 0 || Math.abs(oppLocal - localFrame) > ARM_REFRESH_FRAMES;
-        if (adrift && !seeking[oppTrack]) {
+        // Mid-sweep the standby can only be armed onto positions the sweep
+        // has already left behind, and each of those seeks competes with the
+        // visible track's decode. Above the same velocity line the recovery
+        // uses, standby chasing stops; the first reversal after a flick pays
+        // one seek, which the handover gate already absorbs.
+        if (adrift && !seeking[oppTrack] && targetVelocity < RECOVERY_MAX_VEL) {
           armedFor[oppTrack] = -1;
           arm(oppTrack, frameFor(index, oppRep, localFrame), activeTrack);
         }
@@ -1684,6 +1720,57 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
       first.addEventListener("canplaythrough", openGate, { once: true });
     } else openGate();
 
+    /**
+     * Idle prefetch of the rest of the journey, network-aware.
+     *
+     * On localhost every byte is a disk read, but on the deployed CDN the
+     * first crossing used to be the first time scene 02's megabytes were
+     * asked for — a network stall parked in the middle of the experience.
+     * Once the opening scene can play through, the remaining files are
+     * fetched ONE AT A TIME, at low priority, during browser idle, purely to
+     * land in the HTTP cache: when warm() later calls load(), the bytes are
+     * already local. Forward files first in journey order, then the reverse
+     * set, since scrolling down is the first thing every visitor does.
+     *
+     * Skipped entirely on data-saver and constrained connections — the same
+     * rule pickMediaVariant applies. Effective on the CDN only if the
+     * responses are cacheable, which public/_headers guarantees by pinning
+     * /media/web/* as immutable.
+     */
+    const prefetchAbort = new AbortController();
+    const startPrefetch = () => {
+      type Conn = { saveData?: boolean; effectiveType?: string };
+      const conn = (navigator as Navigator & { connection?: Conn }).connection;
+      if (conn?.saveData || /(^|-)2g|3g/.test(conn?.effectiveType ?? "")) return;
+      const seen = new Set<string>();
+      const urls: string[] = [];
+      const push = (u: string) => {
+        if (!seen.has(u)) {
+          seen.add(u);
+          urls.push(u);
+        }
+      };
+      SEGMENTS.slice(1).forEach((s) => push(s.src));
+      SEGMENTS.forEach((s) => push(s.reverseSrc));
+      const idle = (cb: () => void) =>
+        typeof window.requestIdleCallback === "function"
+          ? window.requestIdleCallback(() => cb(), { timeout: 4000 })
+          : window.setTimeout(cb, 1200);
+      const pump = () => {
+        const next = urls.shift();
+        if (!next || prefetchAbort.signal.aborted) return;
+        fetch(next, { signal: prefetchAbort.signal, priority: "low" } as RequestInit)
+          .then((r) => (r.ok ? r.arrayBuffer() : null))
+          .catch(() => null)
+          .then(() => {
+            if (!prefetchAbort.signal.aborted) idle(pump);
+          });
+      };
+      idle(pump);
+    };
+    if (first && first.readyState >= 4) startPrefetch();
+    else if (first) first.addEventListener("canplaythrough", startPrefetch, { once: true });
+
     // Sample the panel before the first gesture can ask for a rate.
     measureRefresh();
     warm(0);
@@ -1713,9 +1800,11 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
       gsap.ticker.remove(tick);
       seekedHandlers.forEach((e) => e && e.v.removeEventListener("seeked", e.h));
       devListeners.forEach((e) => e && e.v.removeEventListener(e.type, e.h));
+      prefetchAbort.abort();
       if (first) {
         first.removeEventListener("canplay", openGate);
         first.removeEventListener("canplaythrough", openGate);
+        first.removeEventListener("canplaythrough", startPrefetch);
       }
       ctxGsap.revert();
     };

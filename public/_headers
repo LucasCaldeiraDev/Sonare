@@ -1,0 +1,25 @@
+# Netlify cache policy.
+#
+# The media set is versioned BY FILENAME — the encode recipe is part of the
+# name (gop6, 1440p, bt709-tv), so changing any footage means a new filename.
+# That convention is what makes a year of `immutable` safe here, exactly like
+# Vite's hashed /assets. If a file is ever re-encoded under the SAME name,
+# this policy will serve the stale one for up to a year: rename instead.
+#
+# General /media/* first; the more specific immutable blocks below override
+# it where they match.
+
+/media/*
+  Cache-Control: public, max-age=604800
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/media/web/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/media/stills/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/brand/*
+  Cache-Control: public, max-age=31536000, immutable

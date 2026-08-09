@@ -398,9 +398,14 @@ const AUTHORED_OVERLAYS: Overlay[] = [
      */
     id: "fachada-boasvindas",
     kind: "narrative",
-    // seg1 local 4.30–7.70
+    // seg1 local 4.30 → seg2 local 3.46. Crosses the cut on purpose, like
+    // living-bw-2 and s110-3: scene 1 ends on the entrance and scene 2 begins
+    // there, so the welcome keeps walking with the visitor. It leaves as the
+    // theatre's cove lights come on behind the glass (s02 t3.5 → t4.5 frames)
+    // — the house takes over the greeting — and clears the SIM2 card at
+    // 14.24 by almost three seconds.
     globalStart: 4.3,
-    globalEnd: 7.7,
+    globalEnd: 11.5,
     eyebrow: "Chegada",
     title: "Seja bem-vindo",
     description:

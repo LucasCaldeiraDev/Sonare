@@ -134,18 +134,31 @@ const RECOVERY_GAP = 0.5;
 /** Never chain recovery seeks faster than one can plausibly land. */
 const RECOVERY_MIN_MS = 150;
 /**
- * Above this story-rate the target is mid-sweep and no seek can land on it:
- * by the time a GOP-6 seek completes (~40 ms), a 10x target has moved four
- * frames past where the seek was aimed, so the chain of "recoveries" only
- * blanks the canvas 30-50 ms at a time — measured as 190-250 ms gaps inside
- * an 800 ms flick. Sitting just above the physical rate ceiling
- * (min(3, refresh/24)) makes the two flip together: while playing could
- * conceivably track the target, seeks chase it; once the target outruns any
- * possible playback, the element simply runs at the ceiling — which reads as
- * the fast-forward the gesture asked for — and the one seek that matters
- * fires when the sweep decelerates back under this line.
+ * Above this story-rate the target is mid-sweep. Used by the STANDBY arm:
+ * chasing the opposite representation through a sweep armed it onto positions
+ * the sweep had already left, and each of those seeks competed with the
+ * visible track's decode.
+ *
+ * An earlier round also gated RECOVERY seeks on this line — no seeking at all
+ * mid-sweep. It fixed the cadence (57 presented frames against 34 across an
+ * 800 ms flick) but traded it for position: the debt the sweep accumulated
+ * was paid in ONE seek when the gesture landed, felt on real hardware as a
+ * frame JUMP right at the end of every hard flick. The recovery path now
+ * seeks THROUGH the sweep instead, with a predictive lead (below) so each
+ * landing is on target rather than three frames stale — position and cadence
+ * held together instead of traded.
  */
 const RECOVERY_MAX_VEL = 3.0;
+/**
+ * How far ahead of the CURRENT target a recovery seek aims, per unit of
+ * story-rate: the seek lands ~one landing-latency later, and by then a moving
+ * target has moved. Lead = velocity x landing latency, so the decoder
+ * arrives where the story IS, not where it was when the seek was issued.
+ * Landing latency is the GOP-6 measurement (33 ms median, 50 ms worst) plus
+ * one tick; the cap keeps a mis-estimated velocity from aiming into fantasy.
+ */
+const RECOVERY_LANDING_S = 0.06;
+const RECOVERY_LEAD_MAX_FRAMES = 36;
 /** The gesture must be still this long before a resync seek is allowed. */
 const SETTLE_MS = 140;
 /**
@@ -1012,14 +1025,18 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
          * controller takes over from there. Rate-limited, because a recovery
          * seek that has not landed yet cannot be improved by issuing another.
          */
-        if (
-          delta > RECOVERY_GAP &&
-          targetVelocity < RECOVERY_MAX_VEL &&
-          performance.now() - lastRecoveryAt > RECOVERY_MIN_MS
-        ) {
+        if (delta > RECOVERY_GAP && performance.now() - lastRecoveryAt > RECOVERY_MIN_MS) {
           lastRecoveryAt = performance.now();
           recoveries += 1;
-          seekTo(track, mediaFrame);
+          // Aim where the story will be when this seek lands, not where it
+          // is now — the whole difference between a recovery that holds the
+          // gesture and one that arrives already stale (see RECOVERY_LANDING_S).
+          const lead = Math.min(
+            RECOVERY_LEAD_MAX_FRAMES,
+            Math.round(targetVelocity * MEDIA_FPS * RECOVERY_LANDING_S),
+          );
+          const ceiling = mediaFrameCount(SEGMENTS[segOf(track)].mediaFrames) - 1;
+          seekTo(track, Math.min(ceiling, mediaFrame + lead));
           return;
         }
         /**

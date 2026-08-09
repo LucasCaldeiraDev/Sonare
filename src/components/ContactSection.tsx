@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { AtSign, Clock, Mail, MessageCircle } from "lucide-react";
+import { AtSign, Clock, Mail, MessageCircle, ShieldCheck } from "lucide-react";
 import { brand, projectTypes } from "../content/copy";
 import { buildWhatsappLeadUrl } from "../lib/whatsapp";
 
@@ -180,9 +180,19 @@ export function ContactSection() {
             </div>
           </div>
 
+          {/* The strongest trust signal the brand has, sealed right where the
+              decision happens — not buried in a card three sections up. */}
+          <div className="mt-6 flex items-start gap-3 rounded-md border border-sonare-gold/25 bg-sonare-gold/[0.06] px-4 py-3.5">
+            <ShieldCheck size={18} className="mt-0.5 shrink-0 text-sonare-gold" aria-hidden="true" />
+            <p className="m-0 text-[0.82rem] leading-relaxed text-sonare-silver">
+              <span className="font-bold text-sonare-white">Engenharia registrada no CREA.</span>{" "}
+              Projeto e execução conduzidos por Engenheiro de Controle e Automação.
+            </p>
+          </div>
+
           <button
             type="submit"
-            className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-md bg-sonare-white px-6 py-3 text-[0.95rem] font-bold text-sonare-black transition-opacity hover:opacity-85 sm:w-auto"
+            className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-md bg-sonare-white px-6 py-3 text-[0.95rem] font-bold text-sonare-black transition-opacity hover:opacity-85 sm:w-auto"
           >
             <MessageCircle size={18} aria-hidden="true" />
             Enviar pelo WhatsApp

@@ -4,10 +4,12 @@ import { ContactSection } from "./components/ContactSection";
 import { DifferentiatorsSection } from "./components/DifferentiatorsSection";
 import { Footer } from "./components/Footer";
 import { HeroOverlay } from "./components/HeroOverlay";
+import { InteractiveTeaser } from "./components/InteractiveTeaser";
 import { Journey } from "./components/Journey";
 import { Navbar } from "./components/Navbar";
 import { S110Section } from "./components/S110Section";
 import { SolutionsSection } from "./components/SolutionsSection";
+import { ZoomParallax } from "./components/ZoomParallax";
 
 /**
  * Page structure — one uninterrupted cinematic journey, then the commentary.
@@ -39,10 +41,17 @@ function App() {
           closing={{ overlay: <ClosingOverlay />, section: <ClosingSection /> }}
         />
 
+        {/* The film hands straight over to the house's own imagery, which
+            converges on the S110: the zoom ends with the display full-bleed
+            and names it, so the written spotlight below opens on a subject
+            the visitor has just been shown rather than introduced cold. */}
+        <ZoomParallax />
+
         <div id="conteudo">
           <S110Section />
         </div>
 
+        <InteractiveTeaser />
         <SolutionsSection />
         <DifferentiatorsSection />
         <BrandsAndAreaSection />

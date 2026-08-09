@@ -1,4 +1,3 @@
-import { MapPin } from "lucide-react";
 import { brandsWorked, serviceAreaCities } from "../content/copy";
 
 /**
@@ -38,16 +37,39 @@ export function BrandsAndAreaSection() {
           <h2 className="mb-6 font-grandis text-2xl font-medium leading-tight text-sonare-white lg:text-3xl">
             Norte e Litoral de Santa Catarina.
           </h2>
-          <ul className="m-0 grid list-none grid-cols-2 gap-x-6 gap-y-3 p-0">
-            {serviceAreaCities.map((city) => (
-              <li key={city} className="flex items-center gap-2.5 text-[0.95rem] text-sonare-silver">
-                <MapPin size={15} className="shrink-0 text-sonare-gold" aria-hidden="true" />
-                {city}
-              </li>
-            ))}
-          </ul>
+          {/* The route, not a list: cities in their real north→south order,
+              drawn as stations on one line — the same bollard-gold points the
+              facade's driveway lights. The matriz gets the pulsing marker. */}
+          <ol className="relative m-0 list-none p-0" aria-label="Cidades atendidas, de norte a sul">
+            <span
+              aria-hidden="true"
+              className="absolute bottom-3 left-[5px] top-3 w-px bg-gradient-to-b from-sonare-gold/60 via-white/20 to-sonare-gold/60"
+            />
+            {serviceAreaCities.map((city) => {
+              const isHq = "tag" in city;
+              return (
+                <li key={city.name} className="relative flex items-center gap-4 py-2">
+                  <span
+                    aria-hidden="true"
+                    className={`relative z-[1] block h-[11px] w-[11px] shrink-0 rounded-full ${
+                      isHq
+                        ? "anchor-dot bg-sonare-gold"
+                        : "border border-sonare-gold/70 bg-sonare-ink"
+                    }`}
+                  />
+                  <span className="text-[0.95rem] text-sonare-silver">{city.name}</span>
+                  {isHq && (
+                    <span className="rounded-sm border border-sonare-gold/40 px-2 py-0.5 font-mono text-[0.58rem] font-medium uppercase tracking-[0.16em] text-sonare-gold">
+                      {city.tag}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
           <p className="mt-6 text-[0.8rem] leading-relaxed text-sonare-silver/60">
-            Atendemos também praias, áreas rurais, condomínios e demais cidades da região.
+            De norte a sul — e também praias, áreas rurais, condomínios e demais cidades da
+            região.
           </p>
         </div>
       </div>

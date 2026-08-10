@@ -60,8 +60,23 @@ type Props = {
   hero?: ReactNode;
 };
 
-/** ScrollTrigger catch-up, in seconds. Slightly tighter than desktop's 1.1. */
-const SCRUB = 1.0;
+/**
+ * ScrollTrigger catch-up, in seconds — half of desktop's 1.1, because the
+ * gestures are not comparable.
+ *
+ * A wheel is discrete: ~100 px arriving in one jump every few tens of ms, so
+ * damping is what turns a staircase into movement and a long constant is a
+ * feature. A drag is continuous and, worse, the finger is ON the picture — at
+ * 1.0 the frame the visitor is dragging visibly trails their thumb and arrives
+ * after they stop, which reads as the film responding to the scroll rather than
+ * being driven by it.
+ *
+ * Not lower than this, though. The constant is also what absorbs a fling: it
+ * spreads the jump over its own time so the scrub engine sees a ramp instead of
+ * a teleport. Measured at 0.5 the presented step stays at one frame per
+ * animation frame, which is the whole budget there is.
+ */
+const SCRUB = 0.5;
 
 /**
  * How close the incoming track must be to the boundary frame before the swap.
@@ -196,10 +211,24 @@ export function MobileNarrative({ id, closing, hero }: Props) {
           end: () =>
             `+=${Math.round(total * (MOBILE_SCROLL_VH_PER_SECOND / 100) * window.innerHeight)}`,
           pin: true,
-          // Transform pinning, explicitly. position:fixed on a phone fights the
-          // collapsing URL bar, which is exactly the height this pin is sized
-          // against — the one combination that produces a visible jump.
-          pinType: "transform",
+          // pinType is deliberately LEFT ALONE, which resolves to position:
+          // fixed for a viewport scroller — the same thing desktop pins with.
+          //
+          // This carried `pinType: "transform"` for one round, on the theory
+          // that a fixed element would fight the collapsing URL bar. It made
+          // the pin visibly shudder on every downward swipe, and the mechanism
+          // is worth writing down because the theory sounded reasonable:
+          // touch scrolling is driven by the compositor, while a counter
+          // translation can only be written from the main thread, so the pinned
+          // frame travels with the finger for a frame and is yanked back on the
+          // next one. position:fixed never moves in the first place, so there is
+          // nothing to correct and nothing to see.
+          //
+          // Both halves of the original worry were also unfounded. The section
+          // is sized in svh — the SMALL viewport height — so it measures the
+          // same whether the URL bar is showing or not, and ScrollTrigger
+          // already discards the resize events a mobile URL bar fires
+          // (_ignoreMobileResize, set from its own touch detection).
           scrub: SCRUB,
           anticipatePin: 1,
           invalidateOnRefresh: true,

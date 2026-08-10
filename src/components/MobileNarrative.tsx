@@ -11,6 +11,7 @@ import {
   SEGMENT_START_FRAME,
   SEGMENTS,
 } from "../content/timeline";
+import { REFRESH_JOURNEY } from "../lib/scrollOrder";
 import { createScrubEngine, type ScrubEngine } from "../lib/scrubEngine";
 import { OverlayCard } from "./OverlayCard";
 
@@ -353,6 +354,9 @@ export function MobileNarrative({ id, closing, hero }: Props) {
           scrub: SCRUB,
           anticipatePin: 1,
           invalidateOnRefresh: true,
+          // Same position in the document as the desktop journey, and the same
+          // obligation to everything under it — see scrollOrder.
+          refreshPriority: REFRESH_JOURNEY,
           // The governor may only intercept while the film owns the screen.
           // Anywhere else the gesture stays native, and the backlog is dropped
           // on the way out so leaving the section never coasts.

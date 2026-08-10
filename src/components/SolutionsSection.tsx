@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown } from "lucide-react";
 import { gsap, ScrollTrigger } from "../lib/gsap";
+import { REFRESH_SOLUTIONS } from "../lib/scrollOrder";
 import { solutions } from "../content/copy";
 import { iconMap } from "./icons";
 import { SectionHeading } from "./SectionHeading";
@@ -97,6 +98,8 @@ function SolutionsDeck() {
         pin: true,
         anticipatePin: 1,
         invalidateOnRefresh: true,
+        // Pinned in its turn, so it displaces what follows — see scrollOrder.
+        refreshPriority: REFRESH_SOLUTIONS,
         snap: {
           snapTo: 1 / (count - 1),
           duration: { min: 0.15, max: 0.45 },

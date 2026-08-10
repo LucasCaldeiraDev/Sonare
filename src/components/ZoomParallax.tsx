@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import { gsap } from "../lib/gsap";
+import { REFRESH_ZOOM } from "../lib/scrollOrder";
 import { usePrefersReducedMotion } from "../hooks/usePrefersReducedMotion";
 
 /**
@@ -108,6 +109,8 @@ export function ZoomParallax() {
           start: "top top",
           end: "bottom bottom",
           scrub: true,
+          // Measured after the journey above, never before it — see scrollOrder.
+          refreshPriority: REFRESH_ZOOM,
         },
       });
       wrapRefs.current.forEach((el, i) => {

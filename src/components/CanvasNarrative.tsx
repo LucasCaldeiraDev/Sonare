@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { gsap, ScrollTrigger } from "../lib/gsap";
+import { REFRESH_JOURNEY } from "../lib/scrollOrder";
 import {
   FPS,
   GLOBAL_DURATION,
@@ -1882,6 +1883,11 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
           scrub: scrubOverride || SCRUB,
           anticipatePin: 1,
           invalidateOnRefresh: true,
+          // First on the page and the longest runway on it, so this must
+          // re-measure before anything below can know where it sits. See
+          // scrollOrder — the whole point is that the order stops depending on
+          // which effect happens to mount first.
+          refreshPriority: REFRESH_JOURNEY,
           // The governor may only intercept while the film owns the screen.
           // Everywhere else on the page the wheel stays native, and any
           // backlog is dropped on the way out so leaving never coasts.

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
-import { gsap, ScrollTrigger } from "../lib/gsap";
+import { gsap, Observer, ScrollTrigger } from "../lib/gsap";
 import {
+  FPS,
   frameToMediaTime,
   GLOBAL_DURATION,
   GLOBAL_FRAMES,
@@ -102,6 +103,45 @@ const HANDOVER_MAX_MS = 220;
  */
 const PRELOAD_LEAD_FRAMES = 72;
 
+/**
+ * The touch governor — the wheel governor from CanvasNarrative, ported to the
+ * one input a phone has.
+ *
+ * Same premise, and it is arithmetic rather than taste: a screen refreshing at
+ * R Hz showing 24 fps media can present at most R/24 times real time, and a
+ * gesture that asks for more cannot be answered — the playhead runs to the
+ * ceiling, arrives, stops, repeats. Measured here on a violent flick: peak
+ * 8880 px/s, single steps of 44 and 66 frames. Those are the seek path opening
+ * up because the scrub could no longer be caught by playing.
+ *
+ * So the INPUT is capped, exactly as on desktop: the gesture is swallowed into
+ * a backlog and released into the scroll at a rate the presentation path can
+ * sustain. Capping the input rather than the picture is what keeps the film,
+ * the captions and the scroll position agreeing with each other.
+ *
+ * WHAT COULD NOT BE PORTED IS THE INTERCEPTION. Desktop calls preventDefault on
+ * wheel events. The touch equivalent kills native scrolling outright, momentum
+ * and all, so the governor has to own the gesture completely — hence Observer
+ * with preventDefault, enabled only while the film is pinned. Everywhere else
+ * on the page the scroll stays native and untouched.
+ *
+ * The trade this makes is smaller on a phone than it first appears. The section
+ * is PINNED: nothing on screen tracks the finger one-to-one, so there is no
+ * direct-manipulation contract to break. The only feedback a gesture has here
+ * is the film advancing, which is precisely the thing being metered.
+ */
+const GOVERNOR_FRACTION = 1.0;
+/** Ceiling on the backlog, in seconds of scrolling. Surplus past it is dropped. */
+const GOVERNOR_MAX_BACKLOG_S = 0.9;
+/** Refresh rates outside this band are a bad measurement, not a real display. */
+const REFRESH_MIN_HZ = 50;
+const REFRESH_MAX_HZ = 240;
+const REFRESH_FALLBACK_HZ = 60;
+
+/** `?governor=off` restores the raw gesture, for comparing the two by hand. */
+const governorOff =
+  import.meta.env.DEV && new URLSearchParams(window.location.search).get("governor") === "off";
+
 export function MobileNarrative({ id, closing, hero }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
@@ -127,6 +167,65 @@ export function MobileNarrative({ id, closing, hero }: Props) {
     let active = 0;
     /** Non-null while the gate is holding the outgoing frame for an incoming one. */
     let gate: { to: number; since: number } | null = null;
+
+    /**
+     * Governor state. `backlog` is scroll the visitor has asked for and not yet
+     * been given, in pixels, released by the ticker at a bounded rate.
+     */
+    let backlog = 0;
+    let journeyActive = false;
+
+    /**
+     * The display's own rate, measured rather than assumed — a 120 Hz phone may
+     * present twice the story a 60 Hz one can, and half the handsets this will
+     * run on are 120 Hz. Median of the first frame gaps, so one hitch during
+     * startup cannot decide the budget for the whole session.
+     */
+    let refreshHz = REFRESH_FALLBACK_HZ;
+    const gaps: number[] = [];
+    let lastFrameAt = 0;
+    const measureRefresh = (time: number) => {
+      if (lastFrameAt) gaps.push(time - lastFrameAt);
+      lastFrameAt = time;
+      if (gaps.length < 24) return;
+      gaps.sort((a, b) => a - b);
+      const hz = 1000 / gaps[gaps.length >> 1];
+      if (hz >= REFRESH_MIN_HZ && hz <= REFRESH_MAX_HZ) refreshHz = Math.round(hz);
+      gsap.ticker.remove(measureRefresh);
+    };
+    gsap.ticker.add(measureRefresh);
+
+    /**
+     * Pixels per second the page may scroll: the presentable story rate over
+     * the media's own rate, times the runway. Derived rather than fixed, so a
+     * fast panel is allowed to go faster and a longer runway automatically
+     * permits more scrolling.
+     */
+    const governorBudget = () =>
+      Math.min(3, Math.max(1, refreshHz / FPS)) *
+      GOVERNOR_FRACTION *
+      (MOBILE_SCROLL_VH_PER_SECOND / 100) *
+      window.innerHeight;
+
+    /**
+     * The gesture, swallowed. Enabled only while the film owns the screen — the
+     * rest of the page keeps its native scrolling, momentum included.
+     *
+     * deltaY is inverted on the way in because Observer reports finger travel
+     * and the page scrolls the other way, the same conversion normalizeScroll
+     * makes for its own momentum.
+     */
+    const observer = governorOff
+      ? null
+      : Observer.create({
+          target: window,
+          type: "touch",
+          preventDefault: true,
+          onChangeY: (self) => {
+            backlog += -self.deltaY;
+          },
+        });
+    observer?.disable();
 
     videoRefs.current.forEach((el, i) => {
       if (el) el.style.opacity = i === 0 ? "1" : "0";
@@ -166,7 +265,29 @@ export function MobileNarrative({ id, closing, hero }: Props) {
       gate = null;
     };
 
-    const drive = () => {
+    const drive = (_time: number, deltaMs: number) => {
+      // Release whatever the gesture asked for, at the governed rate.
+      if (journeyActive && backlog !== 0) {
+        const budget = governorBudget();
+        const cap = budget * GOVERNOR_MAX_BACKLOG_S;
+        if (Math.abs(backlog) > cap) backlog = Math.sign(backlog) * cap;
+        const step = Math.sign(backlog) * Math.min(Math.abs(backlog), (budget * deltaMs) / 1000);
+        backlog -= step;
+        // Under a pixel is beneath what a scroll call can express; keep it for
+        // the next tick instead of losing it to rounding.
+        if (Math.abs(step) >= 1) {
+          /**
+           * `behavior: "instant"` is load-bearing, and CanvasNarrative paid for
+           * this lesson already: the base stylesheet sets `scroll-behavior:
+           * smooth` on <html> for anchor links, so a bare scroll call inherits
+           * it and every one of these sixty-per-second calls starts a NEW
+           * smooth animation, cancelling the last before it has travelled.
+           * Measured there at ~200 px/s delivered against a 1395 px/s budget.
+           */
+          window.scrollTo({ top: window.scrollY + step, behavior: "instant" });
+        } else backlog += step;
+      }
+
       const target = targetFrameRef.current;
       const { index, local } = locate(Math.floor(target));
       // Keep the fractional part: the engine quantizes to whole frames itself,
@@ -232,6 +353,18 @@ export function MobileNarrative({ id, closing, hero }: Props) {
           scrub: SCRUB,
           anticipatePin: 1,
           invalidateOnRefresh: true,
+          // The governor may only intercept while the film owns the screen.
+          // Anywhere else the gesture stays native, and the backlog is dropped
+          // on the way out so leaving the section never coasts.
+          onToggle: (self) => {
+            journeyActive = self.isActive;
+            if (self.isActive) {
+              observer?.enable();
+            } else {
+              observer?.disable();
+              backlog = 0;
+            }
+          },
         },
       });
       tl.to({}, { duration: total }, 0);
@@ -291,6 +424,10 @@ export function MobileNarrative({ id, closing, hero }: Props) {
     return () => {
       window.clearTimeout(settle);
       gsap.ticker.remove(drive);
+      gsap.ticker.remove(measureRefresh);
+      // Kill, not disable: a live Observer left behind would keep swallowing
+      // touchmove on a page that no longer has a film to govern.
+      observer?.kill();
       engines.forEach((e) => e?.destroy());
       ctx.revert();
     };

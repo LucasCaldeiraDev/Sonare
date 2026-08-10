@@ -17,7 +17,12 @@ const envPort = Number(
  */
 function diagnosticRewrite(req: unknown, _res: unknown, next: () => void) {
   const r = req as { url?: string };
-  if (r.url && (r.url.startsWith("/motion-diagnostic") || r.url.startsWith("/quality-diagnostic"))) {
+  if (
+    r.url &&
+    (r.url.startsWith("/motion-diagnostic") ||
+      r.url.startsWith("/quality-diagnostic") ||
+      r.url.startsWith("/framing-lab"))
+  ) {
     r.url = "/index.html";
   }
   next();

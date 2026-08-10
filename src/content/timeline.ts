@@ -597,25 +597,28 @@ export const OVERLAYS: Overlay[] = AUTHORED_OVERLAYS.map((o) => ({
  * milliseconds apart. The controller then runs at the ceiling, arrives,
  * stops, and repeats: the burst-pause that reads as skipped frames.
  *
- * Swept against simulated wheel input (wheel-vs-smooth.mjs), worst case a
- * 200 px notch every 40 ms, measuring the frame STEP the canvas actually
- * takes — 1 reads as motion, 4+ as a stutter:
+ * THIS NUMBER NO LONGER CONTROLS SMOOTHNESS, and that is worth stating
+ * plainly because it did for one round and the wrong lesson is easy to keep.
  *
- *   62  p90 2, max 20 frames, 5 steps of 4+   <- the reported stutter
- *   75  p90 1, max 18 frames, 2 steps of 4+
- *   85  p90 1, max  2 frames, 0 steps of 4+   <- clean
- *  100  p90 1, max  1 frame,  0 steps of 4+   (no better, 18% longer)
+ * It was raised 62 -> 85 to stop a wheel spin outrunning the screen, and the
+ * sweep supported it: at 62 the canvas took steps of up to 20 frames, at 85
+ * of 2. Then the wheel governor arrived in CanvasNarrative and made that
+ * reasoning obsolete. The governor's budget is computed AS a multiple of this
+ * value, so the maximum story rate it permits — ceiling x fraction — comes out
+ * the same whatever the runway is. Length stopped buying smoothness and became
+ * pure cost: 37% more scrolling for a film that already asks for a lot.
  *
- * 85 is therefore the cheapest value that removes the defect: the journey
- * costs ~37% more scrolling than at 62, and in exchange a wheel spin can no
- * longer outrun what the screen is able to present. Raising it further buys
- * nothing measurable.
+ * Re-measured with the governor on, 62 is as clean as 85 and marginally better
+ * (dropped frames per scene 0/1.5/2.3/2.9/2.8% against 2.0/2.4/3.7/3.5/3.6%),
+ * with zero multi-frame steps either way. So it goes back to 62 — the shortest
+ * of the two, since the longer one now only makes visitors scroll further.
  *
- * `?vhps=N` overrides it in development for re-running that sweep.
+ * `?vhps=N` overrides it in development. If the governor is ever removed, this
+ * reverts to being a smoothness control and 85 becomes the floor again.
  */
 const vhpsOverride =
   import.meta.env.DEV ? Number(new URLSearchParams(window.location.search).get("vhps")) || 0 : 0;
-export const SCROLL_VH_PER_SECOND = vhpsOverride || 85;
+export const SCROLL_VH_PER_SECOND = vhpsOverride || 62;
 
 /**
  * Forward frame index <-> reverse frame index, in whole frames.

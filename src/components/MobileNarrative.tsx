@@ -300,11 +300,32 @@ export function MobileNarrative({ id, closing, hero }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * lvh for the frame, svh for the copy — the two are not the same question.
+   *
+   * A phone's address bar retracts as you scroll, and the viewport grows by its
+   * height when it does. Sized in svh the pinned frame is the height of the
+   * SMALL viewport, so the moment the bar goes away it is 60-90 px short and the
+   * page's own black shows through underneath it. lvh is the height with the bar
+   * hidden, so the picture always reaches the bottom edge; when the bar is
+   * showing the surplus is simply behind it, and object-cover has been cropping
+   * this footage all along.
+   *
+   * lvh keeps what svh was chosen for here. Both are constants — only dvh tracks
+   * the bar live — so the pin still measures the same value on every refresh and
+   * ScrollTrigger has nothing to thrash against.
+   *
+   * The copy cannot follow the frame out there, though: anything anchored to the
+   * bottom of an lvh box sits behind the address bar whenever it is showing. So
+   * the captions, the hero and the closing get their own svh layer, which is the
+   * part of the screen that is visible in every state. The scrim is not in it —
+   * it belongs to the picture and has to reach the same bottom edge.
+   */
   return (
     <section
       ref={sectionRef}
       id={id}
-      className="relative h-[100svh] w-full overflow-hidden bg-sonare-black"
+      className="relative h-[100lvh] w-full overflow-hidden bg-sonare-black"
     >
       {/* Five forward tracks, stacked. Opacity is written imperatively by the
           handover, so a scene change costs no React render. The poster carries
@@ -337,32 +358,38 @@ export function MobileNarrative({ id, closing, hero }: Props) {
         />
       )}
 
-      {hero && (
-        <div ref={heroRef} className="absolute inset-0 z-30">
-          {hero}
-        </div>
-      )}
+      {/* Everything with words in it, held inside the always-visible height.
+          pointer-events are off on the layer and switched back on per child, so
+          this box cannot swallow a tap meant for the page — the hero already
+          hands its own back to the timeline at 1.4s. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 h-[100svh]">
+        {hero && (
+          <div ref={heroRef} className="pointer-events-auto absolute inset-0">
+            {hero}
+          </div>
+        )}
 
-      {OVERLAYS.map((o) => (
-        <OverlayCard
-          key={o.id}
-          overlay={{ ...o, position: o.positionMobile ?? o.position }}
-          compact
-          style={{ opacity: 0 }}
-          refCallback={(el) => {
-            overlayRefs.current[o.id] = el;
-          }}
-        />
-      ))}
+        {OVERLAYS.map((o) => (
+          <OverlayCard
+            key={o.id}
+            overlay={{ ...o, position: o.positionMobile ?? o.position }}
+            compact
+            style={{ opacity: 0 }}
+            refCallback={(el) => {
+              overlayRefs.current[o.id] = el;
+            }}
+          />
+        ))}
 
-      {closing && (
-        <div
-          ref={closingRef}
-          className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center opacity-0"
-        >
-          {closing}
-        </div>
-      )}
+        {closing && (
+          <div
+            ref={closingRef}
+            className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center opacity-0"
+          >
+            {closing}
+          </div>
+        )}
+      </div>
     </section>
   );
 }

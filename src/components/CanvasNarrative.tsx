@@ -1391,10 +1391,24 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
         if (Math.abs(backlog) > cap) backlog = Math.sign(backlog) * cap;
         const step = Math.sign(backlog) * Math.min(Math.abs(backlog), budget * dt);
         backlog -= step;
-        // Under a pixel is beneath what scrollBy can express; keep it for the
-        // next tick instead of losing it to rounding.
-        if (Math.abs(step) >= 1) window.scrollBy(0, step);
-        else backlog += step;
+        // Under a pixel is beneath what a scroll call can express; keep it for
+        // the next tick instead of losing it to rounding.
+        if (Math.abs(step) >= 1) {
+          /**
+           * `behavior: "instant"` is load-bearing, not decoration. The base
+           * stylesheet sets `scroll-behavior: smooth` on <html> for anchor
+           * links, and a bare scrollBy() inherits it — so every one of these
+           * sixty-per-second calls started a NEW smooth animation and
+           * cancelled the last one before it had travelled, leaving the page
+           * crawling at a fraction of the governed budget. Measured: ~200 px/s
+           * delivered against a 1395 px/s budget, which reads exactly like the
+           * "very slow scroll" it was reported as.
+           *
+           * Asking for instant here scrolls by the step this tick computed and
+           * nothing else, which is the whole contract of the governor.
+           */
+          window.scrollTo({ top: window.scrollY + step, behavior: "instant" });
+        } else backlog += step;
       }
 
       // Frame-rate independent damping. See DAMPING for why this value.

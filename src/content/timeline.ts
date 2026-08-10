@@ -47,6 +47,22 @@ export type Segment = {
   /** The original Higgsfield master, served as-is. */
   src: string;
   /**
+   * The portrait derivative: a 1:2 centre crop of the same master at 720x1440.
+   *
+   * A separate FRAMING, not just a smaller file, and that is the point. A phone
+   * shows the journey full-bleed in portrait, so `object-fit: cover` takes a
+   * tall slice out of 16:9 and discards the rest — measured on 375x812 at DPR 2,
+   * the 1080p landscape file had 1421 of its 1920 columns permanently off
+   * screen while the remainder was enlarged 1.50x. Cropping at the source ships
+   * only columns that are shown, and the same phone now enlarges by 1.17x.
+   *
+   * Forward only. Desktop carries reverse companions so scrolling up streams
+   * instead of seeking; at an eighth the size and six frames per GOP, the
+   * mobile decoder seeks backwards cheaply enough that a second set would
+   * double the bytes for nothing. See tools/make-mobile.sh.
+   */
+  mobileSrc: string;
+  /**
    * The same footage with its frames in reverse order.
    *
    * A media element cannot play backwards, so scrolling up used to mean a seek
@@ -225,6 +241,18 @@ const reverseMediaFor = (scene: string) =>
       ? `/media-comparison/interp/out/scene-${scene}-${variantSuffix()}-reverse.mp4`
       : `/media/web/scene-${scene}-${MEDIA_VARIANT}-bt709-tv-gop6-reverse.mp4`;
 
+/**
+ * The portrait set is never A/B'd against anything and has no reverse or 48 fps
+ * companion, so it resolves to one path with no flags in the way.
+ */
+const mobileMediaFor = (scene: string) => `/media/web/scene-${scene}-mobile-bt709-tv-gop6.mp4`;
+
+/** Native pixel dimensions of every file mobileSrc points at. */
+export const MOBILE_SOURCE = { width: 720, height: 1440 } as const;
+
+/** Frame 0 of the portrait scene 01, so the hero never opens on black. */
+export const MOBILE_POSTER = "/media/web/scene-01-poster-mobile.webp";
+
 const mediaFor = (scene: string) =>
   useOriginalMedia
     ? // Archived outside public/ so the superseded set does not double the
@@ -295,6 +323,7 @@ export const SEGMENTS: Segment[] = [
     index: 1,
     label: "Fachada",
     src: mediaFor("01"),
+    mobileSrc: mobileMediaFor("01"),
     reverseSrc: reverseMediaFor("01"),
     poster: "/media/web/scene-01-poster-desktop.avif",
     duration: 8.041667,
@@ -311,6 +340,7 @@ export const SEGMENTS: Segment[] = [
     index: 2,
     label: "Living",
     src: mediaFor("02"),
+    mobileSrc: mobileMediaFor("02"),
     reverseSrc: reverseMediaFor("02"),
     duration: 10.041667,
     frames: 241,
@@ -326,6 +356,7 @@ export const SEGMENTS: Segment[] = [
     index: 3,
     label: "Display S110",
     src: mediaFor("03"),
+    mobileSrc: mobileMediaFor("03"),
     reverseSrc: reverseMediaFor("03"),
     duration: 8.041667,
     frames: 193,
@@ -341,6 +372,7 @@ export const SEGMENTS: Segment[] = [
     index: 4,
     label: "Área gourmet",
     src: mediaFor("04"),
+    mobileSrc: mobileMediaFor("04"),
     reverseSrc: reverseMediaFor("04"),
     duration: 8.041667,
     frames: 193,
@@ -356,6 +388,7 @@ export const SEGMENTS: Segment[] = [
     index: 5,
     label: "Cortinas e skyline",
     src: mediaFor("05"),
+    mobileSrc: mobileMediaFor("05"),
     reverseSrc: reverseMediaFor("05"),
     duration: 8.041667,
     frames: 193,
@@ -619,6 +652,35 @@ export const OVERLAYS: Overlay[] = AUTHORED_OVERLAYS.map((o) => ({
 const vhpsOverride =
   import.meta.env.DEV ? Number(new URLSearchParams(window.location.search).get("vhps")) || 0 : 0;
 export const SCROLL_VH_PER_SECOND = vhpsOverride || 62;
+
+/**
+ * The same runway for touch, and a shorter one — 15.2 screens of scrolling
+ * against the desktop's 26.
+ *
+ * The desktop number is a smoothness control. This one is NOT, and assuming
+ * otherwise would waste a lot of scrolling. The arithmetic that governs desktop
+ * — story rate = scrollSpeed / (vhps x vh) — says that holding a gesture under
+ * the 2.5x presentation ceiling needs the runway to grow with the gesture's
+ * speed, and a touch fling runs at 2000-4000 px/s where a wheel runs at 1670.
+ * Matching it would take roughly 62 screens. There is no runway length that
+ * makes a fling smooth, so length is not the lever here.
+ *
+ * What handles a fling instead is the pair already in the pipeline:
+ * ScrollTrigger's scrub damping plays the jump out over its own time constant,
+ * and past FORWARD_SEEK_GAP the scrub engine stops chasing and seeks. A flick
+ * therefore reads as travelling forward quickly, which is what a flick means.
+ *
+ * So the number is chosen for the DELIBERATE scroll instead, the one the film
+ * is actually read at: at 35 vh/s a steady 400 px/s on an 812 px screen runs
+ * the story at 1.4x, close enough to real time to feel like footage rather than
+ * a slideshow, without asking a phone for 26 screens of travel.
+ *
+ * `?mvhps=N` overrides it in development.
+ */
+const mobileVhpsOverride = import.meta.env.DEV
+  ? Number(new URLSearchParams(window.location.search).get("mvhps")) || 0
+  : 0;
+export const MOBILE_SCROLL_VH_PER_SECOND = mobileVhpsOverride || 35;
 
 /**
  * Forward frame index <-> reverse frame index, in whole frames.

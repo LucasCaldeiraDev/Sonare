@@ -82,12 +82,17 @@ function SegmentView({
   return (
     <section ref={sectionRef} className="relative min-h-[100svh] w-full overflow-hidden bg-sonare-black">
       {/* Only the opening segment ever shows a poster. The others cut straight
-          from the previous segment's held frame. */}
-      
+          from the previous segment's held frame.
+
+          Restored: the poster had been dropped from this branch, so the hero
+          opened on the section's own black until the first scene had buffered —
+          and stayed black for good on a device that refuses to autoplay, since
+          nothing else here ever paints a frame. */}
       {mounted && (
         <video
           ref={videoRef}
           src={segment.src}
+          poster={segment.poster}
           muted
           playsInline
           preload={segment.index === 1 ? "auto" : "metadata"}

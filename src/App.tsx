@@ -4,7 +4,7 @@ import { ContactSection } from "./components/ContactSection";
 import { DifferentiatorsSection } from "./components/DifferentiatorsSection";
 import { Footer } from "./components/Footer";
 import { HeroOverlay } from "./components/HeroOverlay";
-import { InteractiveTeaser } from "./components/InteractiveTeaser";
+import { InteractiveSuite } from "./components/InteractiveSuite";
 import { Journey } from "./components/Journey";
 import { Navbar } from "./components/Navbar";
 import { S110Section } from "./components/S110Section";
@@ -51,7 +51,7 @@ function App() {
           <S110Section />
         </div>
 
-        <InteractiveTeaser />
+        <InteractiveSuite />
         <SolutionsSection />
         <DifferentiatorsSection />
         <BrandsAndAreaSection />

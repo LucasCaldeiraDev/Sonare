@@ -257,4 +257,38 @@ export const s110Functions = [
   { icon: "Home", title: "Ambientes", description: "Navegação cômodo a cômodo." },
 ] as const;
 
+/**
+ * The interactive master suite: four resting states and the clips that travel
+ * between them.
+ *
+ * A state is (curtains, lights), so the key is `${aberta|fechada}-${on|off}`.
+ * Six of the eight transitions have footage — the three source clips plus
+ * their reverses, all shot on a locked-off camera. The two that do NOT are
+ * the light toggle with the curtains already open: there is no clip for it,
+ * and the crossfade the component falls back to reads as a dimmer precisely
+ * because the camera never moved between the two stills.
+ *
+ * Adding the missing clip later is a two-line change here; the component
+ * plays whatever this map provides and crossfades whatever it does not.
+ */
+export type SuiteState = "fechada-off" | "fechada-on" | "aberta-off" | "aberta-on";
+
+export const suiteStill = (state: SuiteState) => `/media/suite/estado-${state}.webp`;
+
+export const suiteClips: Record<string, string> = {
+  "fechada-off>fechada-on": "/media/suite/suite-03.mp4",
+  "fechada-on>fechada-off": "/media/suite/suite-03-rev.mp4",
+  "fechada-off>aberta-off": "/media/suite/suite-01.mp4",
+  "aberta-off>fechada-off": "/media/suite/suite-01-rev.mp4",
+  "fechada-on>aberta-on": "/media/suite/suite-02.mp4",
+  "aberta-on>fechada-on": "/media/suite/suite-02-rev.mp4",
+};
+
+export const suiteAlt: Record<SuiteState, string> = {
+  "fechada-off": "Suíte master com cortinas fechadas e luzes apagadas.",
+  "fechada-on": "Suíte master com cortinas fechadas e iluminação acesa.",
+  "aberta-off": "Suíte master com cortinas abertas para o skyline noturno, luzes apagadas.",
+  "aberta-on": "Suíte master com cortinas abertas para o skyline e iluminação acesa.",
+};
+
 export const projectTypes = ["Casa", "Apartamento", "Comercial", "Outro"] as const;

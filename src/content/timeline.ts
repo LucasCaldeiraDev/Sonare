@@ -584,8 +584,38 @@ export const OVERLAYS: Overlay[] = AUTHORED_OVERLAYS.map((o) => ({
   globalEnd: +(o.globalEnd - INTRO_OFFSET).toFixed(6),
 }));
 
-/** Desktop scroll runway, in vh per second of footage. */
-export const SCROLL_VH_PER_SECOND = 62;
+/**
+ * Desktop scroll runway, in vh per second of footage — and the single number
+ * that decides whether a mouse wheel can be rendered smoothly at all.
+ *
+ * The arithmetic is unforgiving. A 60 Hz screen showing 24 fps media can
+ * present at most 2.5x real time; past that the browser decodes frames it
+ * cannot display. Story rate = scrollSpeed / (SCROLL_VH_PER_SECOND x vh), so
+ * at 62 vh/s on a 1080 px viewport anything faster than ~1670 px/s of
+ * scrolling demands more than the screen can show — and a mouse wheel clears
+ * that easily, because a wheel is not a ramp but ~100 px jumps a few tens of
+ * milliseconds apart. The controller then runs at the ceiling, arrives,
+ * stops, and repeats: the burst-pause that reads as skipped frames.
+ *
+ * Swept against simulated wheel input (wheel-vs-smooth.mjs), worst case a
+ * 200 px notch every 40 ms, measuring the frame STEP the canvas actually
+ * takes — 1 reads as motion, 4+ as a stutter:
+ *
+ *   62  p90 2, max 20 frames, 5 steps of 4+   <- the reported stutter
+ *   75  p90 1, max 18 frames, 2 steps of 4+
+ *   85  p90 1, max  2 frames, 0 steps of 4+   <- clean
+ *  100  p90 1, max  1 frame,  0 steps of 4+   (no better, 18% longer)
+ *
+ * 85 is therefore the cheapest value that removes the defect: the journey
+ * costs ~37% more scrolling than at 62, and in exchange a wheel spin can no
+ * longer outrun what the screen is able to present. Raising it further buys
+ * nothing measurable.
+ *
+ * `?vhps=N` overrides it in development for re-running that sweep.
+ */
+const vhpsOverride =
+  import.meta.env.DEV ? Number(new URLSearchParams(window.location.search).get("vhps")) || 0 : 0;
+export const SCROLL_VH_PER_SECOND = vhpsOverride || 85;
 
 /**
  * Forward frame index <-> reverse frame index, in whole frames.

@@ -169,57 +169,6 @@
     }
   }
 
-  /* Equipment fan (estudo A): the stage the cards spread across.
-     Stage height and card width per breakpoint are paired with the spread
-     multipliers in EquipmentFan.tsx — the two must change TOGETHER, or the
-     outer cards run past the viewport edge. Sizing rule per step: a card's
-     laid-out height is width x 4/3; rotated 16 degrees its bounding box is
-     h*cos16 + w*sin16, and the stage adds the outer cards' y-offset on top. */
-  .fan-layout {
-    height: 20rem;
-  }
-
-  .fan-card {
-    position: absolute;
-    width: 11rem;
-    aspect-ratio: 3 / 4;
-    border-radius: 0.9rem;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
-    will-change: transform;
-  }
-
-  @media (min-width: 480px) {
-    .fan-layout { height: 23rem; }
-    .fan-card { width: 13rem; }
-  }
-
-  @media (min-width: 640px) {
-    .fan-layout { height: 26rem; }
-    .fan-card { width: 15rem; }
-  }
-
-  @media (min-width: 768px) {
-    .fan-layout { height: 27rem; }
-    .fan-card { width: 16rem; }
-  }
-
-  @media (min-width: 1024px) {
-    .fan-layout { height: 35rem; }
-    .fan-card { width: 22rem; }
-  }
-
-  @media (min-width: 1280px) {
-    .fan-layout { height: 40rem; }
-    .fan-card { width: 26rem; }
-  }
-
-  @media (min-width: 1536px) {
-    .fan-layout { height: 44rem; }
-    .fan-card { width: 29rem; }
-  }
-
   @keyframes sonare-fade-up {
     from { opacity: 0; translate: 0 10px; }
     to { opacity: 1; translate: 0 0; }

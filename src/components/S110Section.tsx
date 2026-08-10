@@ -1,6 +1,5 @@
 import { s110Functions, s110Specs } from "../content/copy";
 import { ElasticShowcase } from "./ElasticShowcase";
-import { EquipmentFan } from "./EquipmentFan";
 import { iconMap } from "./icons";
 import { Reveal } from "./Reveal";
 
@@ -110,40 +109,21 @@ export function S110Section() {
         </dl>
       </div>
 
-      {/* Equipment gallery — TWO STUDIES side by side for the client to pick
-          from (temporary A/B; the loser gets removed once chosen). Both feed
-          from equipmentGallery in copy.ts, so adding gear updates both. */}
+      {/* Equipment gallery. The A/B is settled — the elastic panels won, on
+          the grounds that our photography is landscape and the fan's portrait
+          cards cropped it hard. Content lives in equipmentGallery (copy.ts);
+          adding gear is a data change. The fan itself is in git history if a
+          portfolio section ever wants it. */}
       <div className="mx-auto max-w-7xl px-6 sm:px-8">
         <Reveal>
           <p className="mb-4 text-[0.72rem] font-bold uppercase tracking-[0.24em] text-sonare-gold">
             Equipamentos
           </p>
-          <h3 className="mb-4 max-w-xl font-grandis text-2xl font-medium leading-tight text-sonare-white lg:text-3xl">
+          <h3 className="mb-8 max-w-xl font-grandis text-2xl font-medium leading-tight text-sonare-white lg:text-3xl">
             As assinaturas por trás da experiência.
           </h3>
         </Reveal>
-
-        <Reveal>
-          <p className="mb-0 mt-8 font-mono text-[0.62rem] font-medium uppercase tracking-[0.18em] text-sonare-silver/50">
-            Estudo A · Leque
-          </p>
-        </Reveal>
       </div>
-
-      {/* The fan breaks out of the text column on purpose: at this card size
-          it wants the full viewport, and the reading measure above it would
-          only clip the outer cards. */}
-      <EquipmentFan />
-
-      <div className="mx-auto max-w-7xl px-6 sm:px-8">
-        <Reveal>
-          <p className="mb-6 mt-14 font-mono text-[0.62rem] font-medium uppercase tracking-[0.18em] text-sonare-silver/50">
-            Estudo B · Painéis elásticos
-          </p>
-        </Reveal>
-      </div>
-      {/* Same full-bleed treatment as the fan, so the two studies are judged
-          at the same scale rather than one being handicapped by the column. */}
       <div className="pb-20 lg:pb-28">
         <ElasticShowcase />
       </div>

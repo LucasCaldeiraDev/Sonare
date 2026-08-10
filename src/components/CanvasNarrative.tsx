@@ -33,6 +33,110 @@ type CanvasNarrativeProps = {
 };
 
 /**
+ * The two smoothing stages between the scroll wheel and the playhead.
+ *
+ * A mouse wheel is not a scroll — it is a burst of discrete jumps, ~100 px
+ * each, tens of milliseconds apart. Measured against a continuous ramp over
+ * the same distance, the wheel made the canvas present a new frame every
+ * 17 ms against 33 ms: the controller saw a large gap on every notch,
+ * commanded the rate ceiling to close it, arrived, and stopped — burst,
+ * pause, burst. That oscillation IS the stutter reported as "skipping
+ * frames"; every frame is there, they just arrive at double speed and then
+ * not at all.
+ *
+ * SCRUB is ScrollTrigger's catch-up time for the timeline; DAMPING is the
+ * exponential rate at which the rendered frame chases that timeline (higher =
+ * faster = twitchier). Both were tuned against trackpads, where the input is
+ * already continuous, and both are too eager for a wheel. Values below come
+ * from the sweep in wheel-vs-smooth.mjs.
+ */
+const SCRUB = 1.1;
+const DAMPING = 6;
+
+/**
+ * The wheel governor: while the journey owns the screen, a gesture may not
+ * advance the page faster than the film can be shown.
+ *
+ * Everything before this treated the symptom. A 60 Hz screen showing 24 fps
+ * media can present at most 2.5x real time, and a wheel spin asks for far
+ * more; smoothing the target and lengthening the runway only changed how the
+ * shortfall was distributed — the controller still ran at the ceiling,
+ * arrived, stopped, and repeated. Three rounds of tuning moved the stutter
+ * around without removing it.
+ *
+ * So the input is capped instead of the output. Wheel deltas are collected
+ * and released into the scroll at a rate the presentation path can actually
+ * sustain, which means the playhead is never asked to catch up and the
+ * burst-pause has nothing to feed on. Capping the INPUT is also what keeps
+ * the scrollbar, the overlays and the picture in agreement: they all follow
+ * the same (now bounded) scroll position, so nothing drifts apart the way it
+ * would if the canvas alone were rate-limited.
+ *
+ * ceiling x this fraction is the budget. 1.0 spends the whole presentable
+ * rate: it was picked by the client over 0.8 in side-by-side testing on real
+ * hardware, and the reason it wins is that the ceiling is already the honest
+ * physical limit — holding back a further fifth only made the page feel heavy
+ * without buying smoothness the screen could show. Anything ABOVE 1.0 asks for
+ * frames that cannot be presented and the burst-pause returns, so this is the
+ * top of the useful range, not a midpoint.
+ */
+const GOVERNOR_FRACTION = 1.0;
+/**
+ * Ceiling on the backlog, in seconds of scrolling. A flick that would take
+ * ten seconds to play out is not obedience, it is a hostage situation: past
+ * this the surplus is dropped and the gesture simply ends where the budget
+ * reached.
+ */
+const GOVERNOR_MAX_BACKLOG_S = 0.9;
+
+/**
+ * The one seam the film dissolves instead of cutting.
+ *
+ * Every other crossing is a straight cut, by design: the scenes were
+ * generated between shared stills, so a scene's last frame IS the next one's
+ * first and a fade would only soften something already continuous. The
+ * 04 -> 05 seam is the exception, and it was measured rather than guessed.
+ * Against the same scene's own frame-to-frame step — the honest yardstick for
+ * one frame of motion at that camera speed — the seam is worth more than four
+ * frames:
+ *
+ *   1 frame inside scene 05   27.3 dB
+ *   2 frames                  24.2 dB
+ *   4 frames                  22.0 dB
+ *   THE SEAM                  20.7 dB
+ *
+ * It cannot be fixed by realigning: scene 05's frame 0 is already the closest
+ * match to scene 04's last frame (20.74 dB, falling monotonically to 19.83 by
+ * frame 4), and scene 04 is confirmed as the true predecessor (20.7 dB
+ * against 11-12 dB for every other scene). The generator simply did not
+ * reproduce its conditioning still as frame 0 — it opens slightly further
+ * along the camera path. A second effect stacks on top: scene 04 ends nearly
+ * static (42 dB between frames) while scene 05 opens fast (27 dB), so the eye
+ * takes a jolt in velocity as well as in position.
+ *
+ * OFF BY DEFAULT, and that is the client's call after seeing both: at three
+ * frames the dissolve was indistinguishable from the cut, and a cut that
+ * looks the same is the better answer — it keeps one rule for the whole film
+ * instead of one seam with a private exception. The mechanism stays because
+ * the defect it addresses is real and measured, and because a future master
+ * may need it; `?seam=on` enables it.
+ *
+ * Brightness, checked separately, is continuous at every seam (steps of
+ * 0.3-0.8 on a 16-235 scale), so nothing here is compensating for a flash.
+ */
+const SEAM_FADE_FRAMES = 3;
+/**
+ * Segment INDEXES whose start is dissolved when the feature is enabled. 4 is
+ * scene 05 — the seam the measurement singles out. 2 (scene 03) is the other
+ * candidate: relative to its own motion it is the WORST of the four, because
+ * scene 03 opens nearly static (44.8 dB between its own frames) so a
+ * misalignment has no motion to hide behind. It reads as a cut rather than a
+ * stutter, which is why nobody has flagged it — but it is on this list's
+ * doorstep if that ever changes.
+ */
+const SEAM_AT = new Set([4]);
+
+/**
  * How early (in frames) the next segment is warmed up.
  *
  * Raised from 48 after the 2026-08-08 v3 master swap: several derivatives got
@@ -320,6 +424,51 @@ const hudFlag =
 const fixedRate = import.meta.env.DEV
   ? Number(new URLSearchParams(window.location.search).get("fixedRate")) || 0
   : 0;
+/**
+ * `?scrub=N` and `?damp=N` override the two smoothing stages between the
+ * scroll and the playhead, for sweeping them against real wheel input.
+ * Dev-only; production uses the constants chosen from those sweeps.
+ */
+const scrubOverride = import.meta.env.DEV
+  ? Number(new URLSearchParams(window.location.search).get("scrub")) || 0
+  : 0;
+const dampOverride = import.meta.env.DEV
+  ? Number(new URLSearchParams(window.location.search).get("damp")) || 0
+  : 0;
+/** `?recovery=N` overrides RECOVERY_GAP, for sweeping it against wheel input. */
+const recoveryOverride = import.meta.env.DEV
+  ? Number(new URLSearchParams(window.location.search).get("recovery")) || 0
+  : 0;
+/**
+ * The idle prefetch is OFF by default, and stays off until it can be made
+ * safe. It exists to fill the HTTP cache on a cold CDN visit so a scene
+ * boundary never waits on the network — a real benefit, but a speculative one,
+ * and the cost turned out to be measurable and immediate.
+ *
+ * Two defects, both mine, both found by the client scrolling rather than by a
+ * bench. The first version read every response with arrayBuffer(), holding a
+ * whole scene in memory to throw it away, which roughly doubled dropped frames
+ * from scene 02 onward. The second gated the START of each file on the scroll
+ * being still — but an in-flight transfer of 15 MB keeps running once begun,
+ * and `lastMoveAt` is zero at load, so it fired immediately on arrival and
+ * contended with scene 01 itself. That is the opposite of the intent.
+ *
+ * Doing this properly means small Range requests that can be abandoned the
+ * moment a gesture starts, so the transfer is genuinely interruptible. Until
+ * that exists, the journey is better served by leaving the network alone:
+ * `?prefetch=on` re-enables it for that work.
+ */
+const prefetchOn =
+  import.meta.env.DEV && new URLSearchParams(window.location.search).get("prefetch") === "on";
+/** `?governor=off` restores raw wheel input; `?governor=N` sets the fraction. */
+const governorParam = import.meta.env.DEV
+  ? new URLSearchParams(window.location.search).get("governor")
+  : null;
+const governorOff = governorParam === "off";
+/** `?seam=on` enables the 04->05 dissolve; the shipped default is the cut. */
+const seamOn =
+  import.meta.env.DEV && new URLSearchParams(window.location.search).get("seam") === "on";
+const governorFraction = Number(governorParam) || GOVERNOR_FRACTION;
 const useReverseMedia = SEGMENTS.some((s) => s.reverseSrc !== s.src);
 
 /**
@@ -735,6 +884,22 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
      * costs far more than keeping it resident.
      */
     const warmed = new Set<number>();
+
+    /**
+     * NOT DONE, and the measurement is why. Warming is one-way: by scene 4 the
+     * journey has touched every track and ten 1440p decoders are resident,
+     * which looked like the obvious explanation for the stutter growing toward
+     * the end. Releasing distant decoders (pause + preload="none" + load())
+     * was tried and made things WORSE in the per-scene wheel bench — dropped
+     * frames roughly doubled and scene 5 stopped presenting frames entirely,
+     * because a released track that the gesture returns to has to refetch and
+     * re-decode from cold mid-journey.
+     *
+     * So the accumulation is real but releasing is not the answer; the fix, if
+     * one is needed, is fewer resident tracks by design (dropping the reverse
+     * set on low-memory devices, say), not evicting them mid-gesture. See
+     * per-scene-wheel.mjs to reproduce.
+     */
     const warm = (track: number) => {
       if (track < 0 || track >= TRACKS || warmed.has(track)) return;
       const v = elementOf(track);
@@ -1025,7 +1190,10 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
          * controller takes over from there. Rate-limited, because a recovery
          * seek that has not landed yet cannot be improved by issuing another.
          */
-        if (delta > RECOVERY_GAP && performance.now() - lastRecoveryAt > RECOVERY_MIN_MS) {
+        if (
+          delta > (recoveryOverride || RECOVERY_GAP) &&
+          performance.now() - lastRecoveryAt > RECOVERY_MIN_MS
+        ) {
           lastRecoveryAt = performance.now();
           recoveries += 1;
           // Aim where the story will be when this seek lands, not where it
@@ -1114,6 +1282,22 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
     /** When the last recovery seek was issued, and how many there have been. */
     let lastRecoveryAt = 0;
     let recoveries = 0;
+
+    /**
+     * Wheel governor state (see GOVERNOR_FRACTION). `backlog` is scroll the
+     * visitor has asked for and not yet been given, in pixels, released by the
+     * tick at a bounded rate.
+     */
+    let backlog = 0;
+    let journeyActive = false;
+    /**
+     * Pixels per second the page may scroll: the presentable story rate
+     * (frames/s the screen can show, over the media's own rate) times the
+     * runway. Derived rather than fixed, so a 120 Hz panel is allowed to go
+     * faster and a longer runway automatically permits more scrolling.
+     */
+    const governorBudget = () =>
+      rateCeiling() * governorFraction * (SCROLL_VH_PER_SECOND / 100) * window.innerHeight;
     /** Pre-rolls started, for the bench. */
     let prerollStarts = 0;
 
@@ -1196,8 +1380,25 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
       const dt = lastTsRef.current ? Math.min((now - lastTsRef.current) / 1000, 0.05) : 0.016;
       lastTsRef.current = now;
 
-      // Frame-rate independent damping. ~110ms response: cinematic but obedient.
-      const factor = 1 - Math.exp(-9 * dt);
+      /**
+       * Release what the wheel asked for, at the rate the film can be shown.
+       * Runs before the playhead reads the scroll, so the timeline sees the
+       * governed position on this very tick rather than one late.
+       */
+      if (backlog !== 0) {
+        const budget = governorBudget();
+        const cap = budget * GOVERNOR_MAX_BACKLOG_S;
+        if (Math.abs(backlog) > cap) backlog = Math.sign(backlog) * cap;
+        const step = Math.sign(backlog) * Math.min(Math.abs(backlog), budget * dt);
+        backlog -= step;
+        // Under a pixel is beneath what scrollBy can express; keep it for the
+        // next tick instead of losing it to rounding.
+        if (Math.abs(step) >= 1) window.scrollBy(0, step);
+        else backlog += step;
+      }
+
+      // Frame-rate independent damping. See DAMPING for why this value.
+      const factor = 1 - Math.exp(-(dampOverride || DAMPING) * dt);
       renderFrameRef.current += (targetFrameRef.current - renderFrameRef.current) * factor;
 
       // "Settled" is about the SCROLL, not the playhead: the resync seek is
@@ -1446,6 +1647,25 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
         handoverStartedAt = 0;
       }
 
+      /**
+       * The dissolve at 04 -> 05 (see SEAM_FADE_FRAMES). Only while the
+       * handover is settled: mid-crossing the gate may still be painting the
+       * outgoing scene, and blending it with itself would do nothing but cost
+       * a second drawImage.
+       */
+      let seamAlpha = -1;
+      let seamUnder: HTMLVideoElement | null = null;
+      if (seamOn && SEAM_AT.has(index) && paintTrack === activeTrack) {
+        const into = gf - SEGMENT_START_FRAME[index];
+        if (into >= 0 && into < SEAM_FADE_FRAMES) {
+          const prev = elementOf(trackOf(index - 1, rep));
+          if (prev && prev.readyState >= 2) {
+            seamAlpha = (into + 1) / (SEAM_FADE_FRAMES + 1);
+            seamUnder = prev;
+          }
+        }
+      }
+
       const v = elementOf(activeTrack);
       const pv = elementOf(paintTrack);
       // The very first video draw is gated on introConfirmedRef, not merely on
@@ -1471,9 +1691,17 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
             firstVideoFrameRef.current = true;
             document.body.dataset.heroSource = "video";
           }
-        } else if (draw(pv) && !firstVideoFrameRef.current) {
-          firstVideoFrameRef.current = true;
-          document.body.dataset.heroSource = "video";
+        } else {
+          // The outgoing scene underneath, the incoming ramping over it. Both
+          // go through the same cover crop, so nothing shifts during the fade.
+          if (seamUnder) draw(seamUnder);
+          if (seamAlpha >= 0) ctx.globalAlpha = seamAlpha;
+          const painted = draw(pv);
+          ctx.globalAlpha = 1;
+          if (painted && !firstVideoFrameRef.current) {
+            firstVideoFrameRef.current = true;
+            document.body.dataset.heroSource = "video";
+          }
         }
         vis.draws += 1;
         vis.drawMs.push(performance.now() - d0);
@@ -1606,6 +1834,27 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
     gsap.ticker.lagSmoothing(0);
     window.addEventListener("resize", resize);
 
+    /**
+     * The governor's intake. Only wheel input is intercepted: keyboard, touch
+     * and the scrollbar all produce continuous motion the pipeline can already
+     * follow, and hijacking them would cost accessibility for nothing.
+     *
+     * ctrl+wheel is browser zoom and must pass through untouched.
+     */
+    const onWheel = (event: WheelEvent) => {
+      if (governorOff || !journeyActive || event.ctrlKey) return;
+      // deltaMode 1 is lines, 2 is pages; normalise both to pixels.
+      const px =
+        event.deltaMode === 1
+          ? event.deltaY * 16
+          : event.deltaMode === 2
+            ? event.deltaY * window.innerHeight
+            : event.deltaY;
+      event.preventDefault();
+      backlog += px;
+    };
+    window.addEventListener("wheel", onWheel, { passive: false });
+
     let journeyTrigger: ScrollTrigger | null = null;
 
     const ctxGsap = gsap.context(() => {
@@ -1616,9 +1865,16 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
           start: "top top",
           end: () => `+=${Math.round(total * (SCROLL_VH_PER_SECOND / 100) * window.innerHeight)}`,
           pin: true,
-          scrub: 0.6,
+          scrub: scrubOverride || SCRUB,
           anticipatePin: 1,
           invalidateOnRefresh: true,
+          // The governor may only intercept while the film owns the screen.
+          // Everywhere else on the page the wheel stays native, and any
+          // backlog is dropped on the way out so leaving never coasts.
+          onToggle: (self) => {
+            journeyActive = self.isActive;
+            if (!self.isActive) backlog = 0;
+          },
         },
       });
       tl.to({}, { duration: total }, 0);
@@ -1756,6 +2012,7 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
      */
     const prefetchAbort = new AbortController();
     const startPrefetch = () => {
+      if (!prefetchOn) return;
       type Conn = { saveData?: boolean; effectiveType?: string };
       const conn = (navigator as Navigator & { connection?: Conn }).connection;
       if (conn?.saveData || /(^|-)2g|3g/.test(conn?.effectiveType ?? "")) return;
@@ -1773,12 +2030,42 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
         typeof window.requestIdleCallback === "function"
           ? window.requestIdleCallback(() => cb(), { timeout: 4000 })
           : window.setTimeout(cb, 1200);
+      /**
+       * The prefetch only runs while the journey is AT REST, and it never
+       * holds a file in memory.
+       *
+       * Both rules are corrections of the first version, which fetched
+       * back-to-back from the moment scene 01 could play and read each
+       * response with arrayBuffer(). Measured per scene against wheel input,
+       * that cost roughly double the dropped frames from scene 02 onward —
+       * 7.8% against 3.5%, 8.8% against 4.3% — while scene 01 was untouched,
+       * because by then the prefetch had not started. The transfer competes
+       * with the decoder for the same budget, and arrayBuffer() adds tens of
+       * megabytes of allocation per scene on top, exactly while someone is
+       * scrolling.
+       *
+       * So: wait for stillness, and stream the body to nowhere. The cache is
+       * filled either way — that was always the only goal.
+       */
+      const SCROLL_IDLE_MS = 1200;
       const pump = () => {
+        if (prefetchAbort.signal.aborted) return;
+        if (performance.now() - lastMoveAtRef.current < SCROLL_IDLE_MS) {
+          window.setTimeout(pump, 600);
+          return;
+        }
         const next = urls.shift();
-        if (!next || prefetchAbort.signal.aborted) return;
+        if (!next) return;
         fetch(next, { signal: prefetchAbort.signal, priority: "low" } as RequestInit)
-          .then((r) => (r.ok ? r.arrayBuffer() : null))
-          .catch(() => null)
+          .then(async (r) => {
+            const reader = r.ok && r.body ? r.body.getReader() : null;
+            if (!reader) return;
+            for (;;) {
+              const { done } = await reader.read();
+              if (done || prefetchAbort.signal.aborted) break;
+            }
+          })
+          .catch(() => {})
           .then(() => {
             if (!prefetchAbort.signal.aborted) idle(pump);
           });
@@ -1817,6 +2104,7 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
       gsap.ticker.remove(tick);
       seekedHandlers.forEach((e) => e && e.v.removeEventListener("seeked", e.h));
       devListeners.forEach((e) => e && e.v.removeEventListener(e.type, e.h));
+      window.removeEventListener("wheel", onWheel);
       prefetchAbort.abort();
       if (first) {
         first.removeEventListener("canplay", openGate);

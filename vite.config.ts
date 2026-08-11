@@ -29,7 +29,15 @@ function diagnosticRewrite(req: unknown, _res: unknown, next: () => void) {
 }
 
 export default defineConfig({
-  server: Number.isFinite(envPort) && envPort > 0 ? { port: envPort } : undefined,
+  // `host: true` binds the dev server to every interface instead of localhost
+  // only, which is what makes http://<ip-da-rede>:<porta> reachable from a
+  // phone on the same wifi. Testing this page on a real handset is not
+  // optional — the address bar, the autoplay policy and the decoder all behave
+  // differently there, and none of it is visible in device emulation.
+  server: {
+    host: true,
+    ...(Number.isFinite(envPort) && envPort > 0 ? { port: envPort } : {}),
+  },
   plugins: [
     react(),
     {

@@ -143,6 +143,74 @@ const REFRESH_FALLBACK_HZ = 60;
 const governorOff =
   import.meta.env.DEV && new URLSearchParams(window.location.search).get("governor") === "off";
 
+/**
+ * How much of the screen the picture takes, and therefore how much of the room
+ * you get to see. `?frame=45` and `?frame=169` in development.
+ *
+ * THESE ARE THE ONLY THREE ANSWERS THERE ARE, and the reason is worth stating
+ * because "zoom out a bit" sounds like a setting and is not one. With the
+ * picture filling the height of a portrait screen, object-fit: cover decides the
+ * visible horizontal field from the screen's aspect ratio alone — about 26% of
+ * a 16:9 frame on a 430x932 phone — and cropping the FILE wider cannot change
+ * that, because the surplus is exactly what cover throws away. The only way to
+ * see more of the room is for the picture to stop filling the height. So each
+ * option below is a different answer to one question: how much screen to give
+ * back in exchange for how much more scene.
+ *
+ * Counter-intuitively the wider framings are also the LIGHTER ones — 16,6 MB
+ * for the whole 4:5 set and 11,8 MB for 16:9, against 22,19 MB for full-bleed —
+ * because a shorter box needs fewer rows of pixels to fill it sharply.
+ *
+ * FULL IS STILL THE DEFAULT, deliberately. Only its media lives in public/; the
+ * other two are served from media-comparison/ the same way ?temporalMedia=48 is,
+ * so they resolve while developing and cannot reach a build. Promoting whichever
+ * wins is a separate, explicit step — moving five files and changing the default
+ * here — rather than something that happens by leaving a flag switched on.
+ */
+type FrameMode = {
+  id: string;
+  /** Share of the 3840px master visible on a 430px-wide phone. */
+  field: string;
+  src: (index: number) => string;
+  /** The picture's box inside the pinned section. */
+  videoBox: string;
+  /** Where the captions, the hero and the closing live. */
+  copyBox: string;
+};
+
+const scene = (index: number) => String(index).padStart(2, "0");
+
+const FRAMES: Record<string, FrameMode> = {
+  full: {
+    id: "full",
+    field: "26%",
+    src: (i) => SEGMENTS[i - 1].mobileSrc,
+    videoBox: "absolute inset-0 z-[2]",
+    // svh, not lvh: the frame may run under the address bar, the words may not.
+    copyBox: "absolute inset-x-0 top-0 z-30 h-[100svh]",
+  },
+  45: {
+    id: "45",
+    field: "45%",
+    src: (i) => `/media-comparison/framing/scene-${scene(i)}-4x5.mp4`,
+    // 4:5 at full width is 125vw tall, which is where the copy then starts.
+    videoBox: "absolute inset-x-0 top-0 z-[2] h-[125vw]",
+    copyBox: "absolute inset-x-0 bottom-0 top-[125vw] z-30",
+  },
+  169: {
+    id: "169",
+    field: "100%",
+    src: (i) => `/media-comparison/framing/scene-${scene(i)}-16x9.mp4`,
+    videoBox: "absolute inset-x-0 top-0 z-[2] h-[56.25vw]",
+    copyBox: "absolute inset-x-0 bottom-0 top-[56.25vw] z-30",
+  },
+};
+
+const frameFlag = import.meta.env.DEV
+  ? new URLSearchParams(window.location.search).get("frame")
+  : null;
+const FRAME = (frameFlag && FRAMES[frameFlag]) || FRAMES.full;
+
 export function MobileNarrative({ id, closing, hero }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
@@ -472,24 +540,26 @@ export function MobileNarrative({ id, closing, hero }: Props) {
           handover, so a scene change costs no React render. The poster carries
           the opening frame until scene 01 has one of its own — without it the
           hero opens on the section's own black. */}
-      {SEGMENTS.map((seg, i) => (
-        <video
-          key={seg.id}
-          ref={(el) => {
-            videoRefs.current[i] = el;
-          }}
-          src={seg.mobileSrc}
-          poster={i === 0 ? MOBILE_POSTER : undefined}
-          muted
-          playsInline
-          preload={i === 0 ? "auto" : "none"}
-          aria-hidden="true"
-          tabIndex={-1}
-          disablePictureInPicture
-          className="pointer-events-none absolute inset-0 z-[2] h-full w-full object-cover"
-          style={{ opacity: i === 0 ? 1 : 0 }}
-        />
-      ))}
+      <div className={`overflow-hidden bg-sonare-black ${FRAME.videoBox}`}>
+        {SEGMENTS.map((seg, i) => (
+          <video
+            key={seg.id}
+            ref={(el) => {
+              videoRefs.current[i] = el;
+            }}
+            src={FRAME.src(seg.index)}
+            poster={i === 0 && FRAME.id === "full" ? MOBILE_POSTER : undefined}
+            muted
+            playsInline
+            preload={i === 0 ? "auto" : "none"}
+            aria-hidden="true"
+            tabIndex={-1}
+            disablePictureInPicture
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+            style={{ opacity: i === 0 ? 1 : 0 }}
+          />
+        ))}
+      </div>
 
       {closing && (
         <div
@@ -499,11 +569,15 @@ export function MobileNarrative({ id, closing, hero }: Props) {
         />
       )}
 
-      {/* Everything with words in it, held inside the always-visible height.
+      {/* Everything with words in it. In full-bleed it lies over the picture,
+          bounded by the always-visible height; in the framed modes it owns the
+          screen below the picture instead, which is the whole point of giving
+          the height back.
+
           pointer-events are off on the layer and switched back on per child, so
           this box cannot swallow a tap meant for the page — the hero already
           hands its own back to the timeline at 1.4s. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 h-[100svh]">
+      <div className={`pointer-events-none ${FRAME.copyBox}`}>
         {hero && (
           <div ref={heroRef} className="pointer-events-auto absolute inset-0">
             {hero}

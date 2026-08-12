@@ -89,6 +89,32 @@ const GOVERNOR_FRACTION = 1.0;
  * reached.
  */
 const GOVERNOR_MAX_BACKLOG_S = 0.9;
+/**
+ * The floor, in STORY FRAMES: the least the film may advance for one wheel
+ * event, however small that event was.
+ *
+ * The ceiling exists because a wheel can ask for more than the screen can
+ * show. This is the opposite failure, and it is just as real: a trackpad
+ * emits deltas of a few pixels, and a few pixels is a fraction of one frame,
+ * so the picture does not change at all. Nothing is broken — the film is
+ * simply being advanced slower than film exists — but the visitor reads a
+ * still image under their moving finger as the page being heavy.
+ *
+ * Rounding each event up means every input produces visible movement. Two
+ * consequences worth stating: fine-grained scrubbing becomes impossible
+ * (deliberate — that is the behaviour being removed), and trackpad users
+ * travel further per gesture than they asked for.
+ *
+ * Three frames, not one. One frame is the least that guarantees the picture
+ * changes, but "changed by one frame" still reads as a slideshow to someone
+ * inching along. Three is 70 px against the 119 px an ordinary mouse notch
+ * delivers, so a deliberate nudge now lands in the same register as a normal
+ * scroll instead of a fifth of it — which is what closes the gap between the
+ * floor and the ceiling that the client asked for. It cannot go much higher
+ * without a single trackpad twitch out-travelling a full wheel click, which
+ * would feel broken in the other direction.
+ */
+const GOVERNOR_MIN_STEP_FRAMES = 3;
 
 /**
  * The one seam the film dissolves instead of cutting.
@@ -1299,6 +1325,12 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
      */
     const governorBudget = () =>
       rateCeiling() * governorFraction * (SCROLL_VH_PER_SECOND / 100) * window.innerHeight;
+    /**
+     * Pixels of scrolling that equal one frame of story — the unit the floor
+     * is expressed in. Derived from the runway rather than fixed, so changing
+     * the runway cannot silently change what "one frame" costs.
+     */
+    const pxPerStoryFrame = () => ((SCROLL_VH_PER_SECOND / 100) * window.innerHeight) / FPS;
     /** Pre-rolls started, for the bench. */
     let prerollStarts = 0;
 
@@ -1866,7 +1898,26 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
             ? event.deltaY * window.innerHeight
             : event.deltaY;
       event.preventDefault();
+      /**
+       * The floor raises the PENDING TOTAL to one visible step — it does not
+       * inflate each event.
+       *
+       * The first version added `max(|px|, floor)` per event, which was wrong
+       * in exactly the way that matters: a trackpad emits tens of events a
+       * second, so a floor of three frames turned a gentle glide into
+       * thousands of pixels per second of demand, far past what the screen can
+       * present. The backlog saturated, the film ran pinned at the ceiling,
+       * and the stutter the governor exists to prevent came back — reported
+       * immediately, and correctly, as the max having regressed.
+       *
+       * Topping up the BACKLOG instead gives the floor only to a gesture that
+       * would otherwise be too small to see: a stream of small events still
+       * accumulates at its own true rate, because after the first event the
+       * backlog is already above the floor and the clamp stops applying.
+       */
       backlog += px;
+      const floor = GOVERNOR_MIN_STEP_FRAMES * pxPerStoryFrame();
+      if (backlog !== 0 && Math.abs(backlog) < floor) backlog = Math.sign(backlog) * floor;
     };
     window.addEventListener("wheel", onWheel, { passive: false });
 

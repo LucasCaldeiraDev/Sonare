@@ -27,22 +27,47 @@ export function Navbar() {
   // Scrollspy: the link whose section currently crosses the reading band gets
   // the gold tick. The band sits high (40%/55%) so the switch happens as a
   // section takes over the screen, not when it merely peeks in.
+  //
+  // Some linked sections (#experiencia, #solucoes) swap which component
+  // renders them at a responsive breakpoint, replacing the DOM node this was
+  // watching. Depending on that breakpoint here to re-run the effect was
+  // tried and reverted: the swap is driven by each section's own independent
+  // matchMedia/resize listener, not this one, and the two aren't guaranteed
+  // to land in the same React commit — Navbar's re-query could still fire
+  // before the sibling's swap, silently re-observing the node that is about
+  // to be detached. A MutationObserver reacts to the DOM actually changing,
+  // which is the one thing every cause of a swap has in common.
   useEffect(() => {
-    const sections = links
-      .map((link) => document.querySelector(link.href))
-      .filter((el): el is Element => el !== null);
-    if (!sections.length) return;
+    let sectionObserver: IntersectionObserver | null = null;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) setActive(`#${entry.target.id}`);
-        }
-      },
-      { rootMargin: "-40% 0px -55% 0px", threshold: 0 },
-    );
-    sections.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
+    const attach = () => {
+      sectionObserver?.disconnect();
+      const sections = links
+        .map((link) => document.querySelector(link.href))
+        .filter((el): el is Element => el !== null);
+      if (!sections.length) return;
+
+      sectionObserver = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) setActive(`#${entry.target.id}`);
+          }
+        },
+        { rootMargin: "-40% 0px -55% 0px", threshold: 0 },
+      );
+      sections.forEach((el) => sectionObserver!.observe(el));
+    };
+
+    attach();
+
+    const root = document.getElementById("inicio") ?? document.body;
+    const mutationObserver = new MutationObserver(attach);
+    mutationObserver.observe(root, { childList: true, subtree: true });
+
+    return () => {
+      sectionObserver?.disconnect();
+      mutationObserver.disconnect();
+    };
   }, []);
 
   // While the panel is open, keyboard focus stays inside the header: first
@@ -145,7 +170,10 @@ export function Navbar() {
       </nav>
 
       {menuOpen && (
-        <div id="mobile-menu" className="border-t border-white/10 bg-sonare-ink/95 backdrop-blur-md lg:hidden">
+        <div
+          id="mobile-menu"
+          className="max-h-[calc(100vh-4rem)] overflow-y-auto border-t border-white/10 bg-sonare-ink/95 backdrop-blur-md lg:hidden"
+        >
           <div className="flex flex-col px-5 py-4">
             {links.map((link) => (
               <a

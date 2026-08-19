@@ -17,6 +17,21 @@ const ALT: Record<string, string> = {
   s110: "Corredor da residência com o display inteligente S110 instalado na parede.",
   gourmet:
     "Área gourmet com o display S110 na parede, cortinas automatizadas e a vista noturna da cidade.",
+  skyline:
+    "Área gourmet com as cortinas totalmente abertas, revelando o horizonte iluminado da cidade à noite.",
+};
+
+/**
+ * Real dimensions differ slightly per still (verified against the files in
+ * public/media/stills/) — a wrong width/height here reserves the wrong layout
+ * box and the image jumps once it decodes.
+ */
+const DIMENSIONS: Record<string, { width: number; height: number }> = {
+  fachada: { width: 1920, height: 1058 },
+  living: { width: 1920, height: 1058 },
+  s110: { width: 1920, height: 1070 },
+  gourmet: { width: 1920, height: 1058 },
+  skyline: { width: 1920, height: 1058 },
 };
 
 /**
@@ -33,14 +48,16 @@ export function SegmentStills({ id, segments, overlays, closing, hero }: Props) 
         const narrative = mine.filter((o) => o.kind === "narrative");
         const equipment = mine.filter((o) => o.kind === "equipment");
 
+        const dims = DIMENSIONS[seg.id] ?? { width: 1920, height: 1058 };
+
         return (
           <section key={seg.id} className="relative w-full overflow-hidden">
             <img
               src={`/media/stills/${seg.id}.webp`}
               alt={ALT[seg.id] ?? ""}
               className="h-auto w-full"
-              width={1920}
-              height={1058}
+              width={dims.width}
+              height={dims.height}
               loading={i === 0 ? "eager" : "lazy"}
               decoding="async"
             />

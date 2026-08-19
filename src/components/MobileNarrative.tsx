@@ -58,6 +58,8 @@ import { OverlayCard } from "./OverlayCard";
 
 type Props = {
   id?: string;
+  /** Extra scroll runway held past GLOBAL_DURATION, in seconds — see CanvasNarrative. */
+  settle?: number;
   closing?: ReactNode;
   hero?: ReactNode;
 };
@@ -211,7 +213,7 @@ const frameFlag = import.meta.env.DEV
   : null;
 const FRAME = (frameFlag && FRAMES[frameFlag]) || FRAMES.full;
 
-export function MobileNarrative({ id, closing, hero }: Props) {
+export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const overlayRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -226,7 +228,7 @@ export function MobileNarrative({ id, closing, hero }: Props) {
     const section = sectionRef.current;
     if (!section) return;
 
-    const total = GLOBAL_DURATION;
+    const total = GLOBAL_DURATION + settle;
     const engines: (ScrubEngine | null)[] = SEGMENTS.map((seg, i) => {
       const el = videoRefs.current[i];
       return el ? createScrubEngine(el, seg.duration) : null;
@@ -386,8 +388,13 @@ export function MobileNarrative({ id, closing, hero }: Props) {
       const now = performance.now();
       if (!gate || gate.to !== index) gate = { to: index, since: now };
 
+      // Mirrors CanvasNarrative's forced handover: past HANDOVER_MAX_MS the
+      // swap stops waiting for an exact frame match, but it still never shows
+      // a track that has decoded nothing — readyState < 2 there just holds
+      // the outgoing picture one more tick instead of flashing a blank frame.
       const landed = el.readyState >= 2 && Math.abs(el.currentTime - seconds) < HANDOVER_TOL;
-      if (landed || now - gate.since > HANDOVER_MAX_MS) show(index);
+      const forced = now - gate.since > HANDOVER_MAX_MS && el.readyState >= 2;
+      if (landed || forced) show(index);
     };
 
     gsap.ticker.add(drive);
@@ -491,10 +498,10 @@ export function MobileNarrative({ id, closing, hero }: Props) {
     // The pin is measured against a viewport a phone changes by scrolling, so
     // the first measurement is taken before the address bar has settled.
     ScrollTrigger.refresh();
-    const settle = window.setTimeout(() => ScrollTrigger.refresh(), 250);
+    const settleTimer = window.setTimeout(() => ScrollTrigger.refresh(), 250);
 
     return () => {
-      window.clearTimeout(settle);
+      window.clearTimeout(settleTimer);
       gsap.ticker.remove(drive);
       gsap.ticker.remove(measureRefresh);
       // Kill, not disable: a live Observer left behind would keep swallowing

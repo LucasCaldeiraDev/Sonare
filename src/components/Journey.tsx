@@ -53,7 +53,7 @@ export function Journey({ id, settle, closing, hero }: JourneyProps) {
   }
 
   if (isPortrait && !forceSegments) {
-    return <MobileNarrative id={id} closing={closing?.overlay} hero={hero} />;
+    return <MobileNarrative id={id} settle={settle} closing={closing?.overlay} hero={hero} />;
   }
 
   return (

@@ -33,6 +33,19 @@ function SegmentView({
   useEffect(() => {
     const el = sectionRef.current;
     if (!el || !mounted) return;
+
+    // Muted + playsInline autoplay is normally allowed, but play() can still
+    // be rejected (Data Saver, iOS Low Power Mode, a transient decode error).
+    // The one thing that reliably unblocks it is a real user gesture, so a
+    // rejected play() is retried on the visitor's next touch/click instead of
+    // leaving the segment frozen — and silent — for good.
+    let retryOnGesture: (() => void) | null = null;
+    const clearRetry = () => {
+      if (!retryOnGesture) return;
+      window.removeEventListener("pointerdown", retryOnGesture);
+      retryOnGesture = null;
+    };
+
     const io = new IntersectionObserver(
       (entries) => {
         const v = videoRef.current;
@@ -40,7 +53,15 @@ function SegmentView({
         for (const e of entries) {
           inViewRef.current = e.isIntersecting;
           if (e.isIntersecting) {
-            if (!v.ended) v.play().catch(() => {});
+            if (!v.ended) {
+              v.play().catch(() => {
+                clearRetry();
+                retryOnGesture = () => {
+                  if (inViewRef.current) v.play().catch(() => {});
+                };
+                window.addEventListener("pointerdown", retryOnGesture, { once: true });
+              });
+            }
           } else {
             v.pause();
             setActive([]);
@@ -50,7 +71,10 @@ function SegmentView({
       { threshold: 0.4 },
     );
     io.observe(el);
-    return () => io.disconnect();
+    return () => {
+      io.disconnect();
+      clearRetry();
+    };
   }, [mounted]);
 
   // Captions follow the segment's own clock, converted from global time.

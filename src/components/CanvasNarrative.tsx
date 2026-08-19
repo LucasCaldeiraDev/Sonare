@@ -691,6 +691,11 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
       if (!vw || !vh) return false;
       const cw = canvas.width;
       const ch = canvas.height;
+      // A transiently zero-sized canvas (layout not yet settled) would make
+      // targetAr non-finite, which drawImage below silently no-ops on — but
+      // without this guard the call still reports a successful draw and
+      // permanently disables the poster fallback (see firstVideoFrameRef).
+      if (!cw || !ch) return false;
       const targetAr = cw / ch;
 
       // cover, anchored at centre, computed from the source's own pixels
@@ -1310,6 +1315,15 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
     /** When the current crossing began holding, 0 when no crossing is pending. */
     let handoverStartedAt = 0;
     /**
+     * True once HANDOVER_MAX_MS has been reached for the crossing in
+     * progress. Latched rather than re-armed: without this, resetting
+     * handoverStartedAt to 0 when forcing let the very next tick treat the
+     * still-unresolved crossing as a brand-new one and restart the whole
+     * HANDOVER_MAX_MS wait, turning a one-time ceiling into a cycle that
+     * repeated for as long as the decode stayed slow.
+     */
+    let handoverForced = false;
+    /**
      * How fast the scroll is advancing the story, in footage-seconds per
      * wall-second — the same unit as playbackRate. Smoothed, because raw
      * wheel deltas are spiky enough to make the rate audible as pumping.
@@ -1425,8 +1439,23 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
 
     const tick = () => {
       const now = performance.now();
-      const dt = lastTsRef.current ? Math.min((now - lastTsRef.current) / 1000, 0.05) : 0.016;
+      const isFirstTick = !lastTsRef.current;
+      const dt = isFirstTick ? 0.016 : Math.min((now - lastTsRef.current) / 1000, 0.05);
       lastTsRef.current = now;
+
+      // Hard-sync once, on the very first tick, instead of always ramping up
+      // from 0: targetFrameRef is already correct by now (GSAP's onUpdate
+      // fires from ScrollTrigger's initial position during setup, before the
+      // ticker's first tick), but renderFrameRef otherwise starts at 0 and
+      // has to damp its way up to it — which is exactly the mismatch a
+      // reload with scroll position restored mid-journey exposes: the
+      // anchor dot and SystemRail visibly ramp through the wrong state for
+      // a beat before the damped catch-up lands.
+      if (isFirstTick) {
+        renderFrameRef.current = targetFrameRef.current;
+        prevTargetRef.current = targetFrameRef.current;
+        lastTargetRef.current = targetFrameRef.current;
+      }
 
       /**
        * Release what the wheel asked for, at the rate the film can be shown.
@@ -1692,10 +1721,11 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
           stats.maxHoldMs = Math.max(stats.maxHoldMs, now - handoverStartedAt);
           handoverStartedAt = 0;
           dirSwitchStartedAt = 0;
-        } else if (now - handoverStartedAt > HANDOVER_MAX_MS) {
+          handoverForced = false;
+        } else if (handoverForced || now - handoverStartedAt > HANDOVER_MAX_MS) {
+          if (!handoverForced) stats.forced += 1;
           handover = "forçado";
-          stats.forced += 1;
-          handoverStartedAt = 0;
+          handoverForced = true;
           dirSwitchStartedAt = 0;
         } else {
           const held = elementOf(drawnTrack);
@@ -1707,6 +1737,7 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
         }
       } else {
         handoverStartedAt = 0;
+        handoverForced = false;
       }
 
       /**

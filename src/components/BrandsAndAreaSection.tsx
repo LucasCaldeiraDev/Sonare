@@ -1,42 +1,46 @@
-import { brandsWorked, serviceAreaCities } from "../content/copy";
+import { serviceAreaCities } from "../content/copy";
+import { BrandMarquee } from "./BrandMarquee";
 
-/**
- * Brands are listed as text only — third-party logos stay out of the page
- * until official usage rights are confirmed (docs/pending-inputs.md).
- */
 export function BrandsAndAreaSection() {
   return (
     <section className="border-t border-white/10 bg-sonare-ink" aria-label="Marcas e área de atendimento">
-      <div className="mx-auto grid max-w-7xl gap-14 px-6 py-16 sm:px-8 lg:grid-cols-2 lg:gap-20 lg:py-24">
-        <div>
-          <p className="mb-4 text-[0.72rem] font-bold uppercase tracking-[0.24em] text-sonare-gold">
-            Ecossistema
-          </p>
-          <h2 className="mb-6 font-grandis text-2xl font-medium leading-tight text-sonare-white lg:text-3xl">
-            Marcas com as quais trabalhamos.
-          </h2>
-          <ul className="m-0 flex list-none flex-wrap gap-x-2 gap-y-3 p-0">
-            {brandsWorked.map((name) => (
-              <li
-                key={name}
-                className="rounded-md border border-white/12 px-4 py-2 text-[0.85rem] font-medium tracking-wide text-sonare-silver"
-              >
-                {name}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-6 text-[0.8rem] leading-relaxed text-sonare-silver/60">
-            Equipamentos especificados conforme cada projeto, com fornecimento por canais oficiais.
-          </p>
-        </div>
+      {/* Ecossistema: full-bleed, so the strip has the whole viewport to loop
+          through — more logos on screen at once than a half-column ever
+          allowed, matching the reference sites this was benchmarked against. */}
+      <div className="mx-auto max-w-7xl px-6 pb-8 pt-16 sm:px-8 lg:pt-24">
+        <p className="mb-4 text-[0.72rem] font-bold uppercase tracking-[0.24em] text-sonare-gold">
+          Ecossistema
+        </p>
+        <h2 className="font-grandis text-2xl font-medium leading-tight text-sonare-white lg:text-3xl">
+          Marcas com as quais trabalhamos.
+        </h2>
+      </div>
 
-        <div>
-          <p className="mb-4 text-[0.72rem] font-bold uppercase tracking-[0.24em] text-sonare-gold">
-            Onde atendemos
-          </p>
-          <h2 className="mb-6 font-grandis text-2xl font-medium leading-tight text-sonare-white lg:text-3xl">
-            Norte e Litoral de Santa Catarina.
-          </h2>
+      <BrandMarquee />
+
+      <div className="mx-auto max-w-7xl px-6 pb-16 pt-6 sm:px-8 lg:pb-24">
+        <p className="m-0 text-[0.8rem] leading-relaxed text-sonare-silver/60">
+          Equipamentos especificados conforme cada projeto, com fornecimento por canais oficiais.
+        </p>
+      </div>
+
+      {/* Onde atendemos: its own full-width row, stacked below instead of
+          sharing a column with the brand strip. */}
+      <div className="border-t border-white/10">
+        <div className="mx-auto grid max-w-7xl gap-10 px-6 py-16 sm:px-8 lg:grid-cols-2 lg:gap-20 lg:py-24">
+          <div>
+            <p className="mb-4 text-[0.72rem] font-bold uppercase tracking-[0.24em] text-sonare-gold">
+              Onde atendemos
+            </p>
+            <h2 className="mb-6 font-grandis text-2xl font-medium leading-tight text-sonare-white lg:text-3xl">
+              Norte e Litoral de Santa Catarina.
+            </h2>
+            <p className="m-0 text-[0.8rem] leading-relaxed text-sonare-silver/60">
+              De norte a sul — e também praias, áreas rurais, condomínios e demais cidades da
+              região.
+            </p>
+          </div>
+
           {/* The route, not a list: cities in their real north→south order,
               drawn as stations on one line — the same bollard-gold points the
               facade's driveway lights. The matriz gets the pulsing marker. */}
@@ -67,10 +71,6 @@ export function BrandsAndAreaSection() {
               );
             })}
           </ol>
-          <p className="mt-6 text-[0.8rem] leading-relaxed text-sonare-silver/60">
-            De norte a sul — e também praias, áreas rurais, condomínios e demais cidades da
-            região.
-          </p>
         </div>
       </div>
     </section>

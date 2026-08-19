@@ -178,6 +178,19 @@
     animation: sonare-fade-up 0.45s ease both;
   }
 
+  /* Brand strip: one track holding two copies of the logo list, translated
+     exactly -50% so the seam is invisible — looping forever without a jump
+     cut. Collapses to a static frame under prefers-reduced-motion via the
+     global rule above. */
+  @keyframes sonare-marquee-scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  .brand-marquee-track {
+    animation: sonare-marquee-scroll 32s linear infinite;
+  }
+
   .skip-link {
     position: fixed;
     top: -100%;

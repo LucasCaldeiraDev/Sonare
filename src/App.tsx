@@ -8,6 +8,7 @@ import { Journey } from "./components/Journey";
 import { Navbar } from "./components/Navbar";
 import { S110Section } from "./components/S110Section";
 import { SolutionsSection } from "./components/SolutionsSection";
+import { WhatsAppFloatButton } from "./components/WhatsAppFloatButton";
 import { ZoomParallax } from "./components/ZoomParallax";
 
 /**
@@ -56,6 +57,7 @@ function App() {
         <ContactSection />
       </main>
       <Footer />
+      <WhatsAppFloatButton />
     </>
   );
 }

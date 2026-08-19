@@ -219,19 +219,28 @@ export const process = [
   { step: "04", title: "Entrega", description: "Ajuste fino, validação com o cliente e acompanhamento pós-entrega." },
 ] as const;
 
-/** Text-only — no third-party logos are published without confirmed usage rights. */
-export const brandsWorked = [
-  "Bowers & Wilkins",
-  "Rotel",
-  "NAD",
-  "Marantz",
-  "JL Audio",
-  "SIM2",
-  "Audioquest",
-  "Moon by SIMAUDIO",
-  "Clearaudio",
-  "Piero",
-  "Russound",
+/**
+ * Brands worked with. `logo` is only set once an official mark has been
+ * confirmed publishable for that brand (docs/pending-inputs.md); brands
+ * without one render as a styled wordmark instead of raw text, so the strip
+ * stays visually even without borrowing unconfirmed third-party art.
+ */
+export type BrandEntry = { name: string; logo?: string };
+
+export const brandsWorked: BrandEntry[] = [
+  { name: "Bowers & Wilkins", logo: "/media/brands/bowers-wilkins.png" },
+  { name: "Rotel", logo: "/media/brands/rotel.png" },
+  { name: "NAD", logo: "/media/brands/nad.png" },
+  { name: "Marantz" },
+  { name: "JL Audio", logo: "/media/brands/jl-audio.png" },
+  { name: "SIM2" },
+  { name: "Audioquest", logo: "/media/brands/audioquest.png" },
+  { name: "Moon by SIMAUDIO" },
+  { name: "Clearaudio" },
+  { name: "Piero", logo: "/media/brands/piero.png" },
+  { name: "Russound" },
+  { name: "StormAudio", logo: "/media/brands/stormaudio.png" },
+  { name: "Integra", logo: "/media/brands/integra.svg" },
 ];
 
 /**

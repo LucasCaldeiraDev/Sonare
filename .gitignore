@@ -22,3 +22,7 @@ media-comparison/**/*.jpg
 # media-comparison/scene01-fidelity/tools/make-references.sh, ~27 MB.
 # Ficam fora de public/ de propósito para não entrarem no bundle de produção.
 diagnostic-refs/
+
+# Masters 4K da suite interativa. O site so carrega os webp em
+# public/media/suite/estados/ — os PNG ficam fora do bundle de producao.
+masters/

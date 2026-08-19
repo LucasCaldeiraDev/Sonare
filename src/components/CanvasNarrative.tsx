@@ -141,27 +141,37 @@ const GOVERNOR_MIN_STEP_FRAMES = 3;
  * static (42 dB between frames) while scene 05 opens fast (27 dB), so the eye
  * takes a jolt in velocity as well as in position.
  *
- * OFF BY DEFAULT, and that is the client's call after seeing both: at three
- * frames the dissolve was indistinguishable from the cut, and a cut that
- * looks the same is the better answer — it keeps one rule for the whole film
- * instead of one seam with a private exception. The mechanism stays because
- * the defect it addresses is real and measured, and because a future master
- * may need it; `?seam=on` enables it.
+ * It shipped OFF for a while: at three frames the dissolve was
+ * indistinguishable from the cut at seam 04, and a cut that looks the same is
+ * the better answer. That changed when the client felt 01->02 and 02->03 —
+ * the two seams this file's own note had already flagged as candidates.
+ * `?seam=off` restores the cut for comparison.
  *
  * Brightness, checked separately, is continuous at every seam (steps of
  * 0.3-0.8 on a 16-235 scale), so nothing here is compensating for a flash.
  */
 const SEAM_FADE_FRAMES = 3;
 /**
- * Segment INDEXES whose start is dissolved when the feature is enabled. 4 is
- * scene 05 — the seam the measurement singles out. 2 (scene 03) is the other
- * candidate: relative to its own motion it is the WORST of the four, because
- * scene 03 opens nearly static (44.8 dB between its own frames) so a
- * misalignment has no motion to hide behind. It reads as a cut rather than a
- * stutter, which is why nobody has flagged it — but it is on this list's
- * doorstep if that ever changes.
+ * Segment INDEXES whose start is dissolved. Every seam was measured against
+ * the step the INCOMING scene takes between its own consecutive frames — the
+ * only fair yardstick, because a jump matters in proportion to the motion it
+ * has to hide behind:
+ *
+ *   01->02  21.9 dB vs 25.9 — a camera advance, 4.0 dB adrift
+ *   02->03  28.3 dB vs 45.9 — 17.6 dB adrift, the worst of the four. Scene 03
+ *           opens nearly static, so a push-in has NO motion to hide behind;
+ *           in absolute terms it is the mildest jump and perceptually the
+ *           harshest.
+ *   03->04  23.6 dB vs 25.3 — 1.7 dB, continuous. Left alone.
+ *   04->05   20.8 dB vs 27.5 — 6.7 dB adrift.
+ *
+ * Trimming was tested first and does not help: the gaps are constant camera
+ * offsets, not timing offsets. Scene 02's last frame sits ~36.7 dB from EVERY
+ * one of scene 03's first 32 frames, so there is no cut point that closes it.
+ * The real fix is upstream — regenerate the scene from its predecessor's true
+ * final frame — and this dissolve is what stands in until then.
  */
-const SEAM_AT = new Set([4]);
+const SEAM_AT = new Set([1, 2, 4]);
 
 /**
  * How early (in frames) the next segment is warmed up.
@@ -492,9 +502,14 @@ const governorParam = import.meta.env.DEV
   ? new URLSearchParams(window.location.search).get("governor")
   : null;
 const governorOff = governorParam === "off";
-/** `?seam=on` enables the 04->05 dissolve; the shipped default is the cut. */
+/**
+ * The seam dissolve, ON by default now that the client has felt the two seams
+ * the measurement had already singled out. `?seam=off` restores the hard cut
+ * for an A/B in dev — the flag flipped meaning, so the comparison stays
+ * one keystroke away rather than a rebuild.
+ */
 const seamOn =
-  import.meta.env.DEV && new URLSearchParams(window.location.search).get("seam") === "on";
+  !import.meta.env.DEV || new URLSearchParams(window.location.search).get("seam") !== "off";
 const governorFraction = Number(governorParam) || GOVERNOR_FRACTION;
 const useReverseMedia = SEGMENTS.some((s) => s.reverseSrc !== s.src);
 

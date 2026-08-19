@@ -35,11 +35,11 @@ Este arquivo concentra as informacoes e materiais que ainda precisam ser enviado
 - Arquivos preservados em `docs/references/equipment`; inventario e restricoes em `docs/equipment-scene-reference.md`.
 
 ## Stills de producao atuais
-- `public/media/Sonare-Fachada.png`: inicio da Cena 1, com living e cidade projetada visiveis pelo vidro.
-- `public/media/Sonare-Living.png`: fim da Cena 1 e inicio da Cena 2, com cidade completa no telao e Remote One na mesa.
-- `public/media/Sonare-Corredor.png`: fim da Cena 2 e inicio da Cena 3, com telao parcial, mesa sem controle e S110 ao fundo.
-- `public/media/sonare-display-s110.png`: autoridade do close do S110, fim da Cena 3 e inicio da Cena 4.
-- Os quatro arquivos estao aprovados como direcao visual; confirmar separadamente os direitos de publicacao.
+Os quatro stills desta secao (`Sonare-Fachada.png`, `Sonare-Living.png`,
+`Sonare-Corredor.png`, `sonare-display-s110.png`) nao existem mais em
+`public/media/` — foram substituidos pelas cinco cenas de video (`scene-01`
+a `scene-05` em `public/media/web/`) que carregam a jornada hoje. Confirmar
+se os direitos de publicacao das cenas atuais ja foram equacionados.
 
 ## Confirmacoes prioritarias da cena de cinema
 - Confirmar se as caixas de piso amadeiradas mostradas nas referencias sao B&W 804 D4 ou 802 D4. Nao usar 805/bookshelf.
@@ -76,20 +76,16 @@ Este arquivo concentra as informacoes e materiais que ainda precisam ser enviado
 
 ## Problemas preexistentes detectados no encerramento da rodada de fidelidade (04/08/2026)
 
-Registrados, nao corrigidos: estao fora do escopo daquela rodada e nao tem
-relacao com colorimetria. Nenhum deles foi causado pelo trabalho de fidelidade.
+Registrados, nao corrigidos naquela rodada: estavam fora do escopo dela e nao
+tinham relacao com colorimetria. Os dois primeiros ja foram corrigidos em
+rodadas posteriores (verificado em 18/08/2026) — mantidos aqui riscados
+para historico:
 
-- **`/media/web/s110-spotlight.webp` nao existe.** Referenciado em
-  `src/components/S110Section.tsx:52`. O arquivo nao esta em lugar nenhum do
-  repositorio. Em desenvolvimento o Vite responde `200 text/html` (fallback de
-  SPA), entao a `<img>` renderiza quebrada em vez de dar 404 visivel; em
-  producao, num host estatico, sera 404. Decidir: produzir o still ou remover a
-  referencia.
-- **`og:image` aponta para arquivo inexistente.** `index.html` declara
-  `https://sonareava.com.br/media/web/scene-01-poster-desktop.webp` (extensao
-  `.webp`), mas o poster produzido e `.avif`. Nao foi trocado porque scrapers de
-  redes sociais tem suporte irregular a AVIF — o certo e gerar um JPEG ou WebP
-  dedicado para Open Graph, com as dimensoes ja declaradas (1920x1058).
+- ~~`/media/web/s110-spotlight.webp` nao existe.`~~ **Resolvido**: o arquivo
+  existe hoje em `public/media/web/s110-spotlight.webp` e e servido normalmente.
+- ~~`og:image` aponta para arquivo inexistente.~~ **Resolvido**: hoje existem
+  tanto `scene-01-poster-desktop.avif` (usado no `<link>` do poster) quanto
+  `scene-01-poster-desktop.webp` (usado no `og:image`), lado a lado.
 - **`docs/pending-inputs.md` cita stills que nao existem mais** em
   `public/media/`: `Sonare-Fachada.png`, `Sonare-Living.png`,
   `Sonare-Corredor.png`, `sonare-display-s110.png`. Conferir se foram

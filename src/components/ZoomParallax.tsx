@@ -35,6 +35,12 @@ import { usePrefersReducedMotion } from "../hooks/usePrefersReducedMotion";
  */
 type Card = {
   src: string;
+  /**
+   * Narrow-screen source, served under `MOBILE_MAX` — see the note on the
+   * featured card. Only the featured card has one; the decorative tiles fly
+   * past the edges where framing does not matter.
+   */
+  srcMobile?: string;
   alt: string;
   /** Layout box in the sticky frame. For the featured card, already final size. */
   frame: string;
@@ -44,13 +50,47 @@ type Card = {
   from?: number;
 };
 
+/** Tailwind's `sm` breakpoint, as a media query for <source>. */
+const MOBILE_MAX = "(max-width: 639px)";
+
 const CARDS: Card[] = [
   {
     // 3840w derivative of the 5K master: at full bleed the labels are still
     // 2x oversampled on a 1920 viewport, so they survive a HiDPI screen too.
     src: "/media/web/s110-zoom.webp",
+    /**
+     * THE PANEL IS THE POINT, AND FULL-BLEED HID IT ON A PHONE.
+     *
+     * The master is 16:9 and the S110 spans about half its width. Filling the
+     * height of a portrait screen scales that frame to ~1450px wide behind a
+     * 375px window, so a quarter of the picture is on screen and it is the
+     * middle quarter: the clock is cut off on one side and the weather card on
+     * the other. The panel was the biggest thing on screen and still
+     * unreadable, which is the worst of both.
+     *
+     * The fix is a tighter crop rather than a new image, and specifically NOT
+     * a regenerated one. This asset's whole value is that the interface is the
+     * client's real bitmap composited at native 1:1 into the measured screen
+     * rectangle (see S110Section) — every label is the actual product's. An
+     * image model asked for a 9:16 version would invent the labels, which is
+     * exactly what the composite exists to prevent. So the mobile source is
+     * cut from the same master: 3109x2787 around the panel, no resampling of
+     * the UI beyond the single Lanczos reduction to 1600w, which still leaves
+     * the labels oversampled on a DPR-3 handset.
+     *
+     * The crop is 1.115:1, not 9:16, and that is deliberate. Nothing between
+     * the panel's own proportions and a phone's 0.46 can be reached by
+     * cropping a 16:9 source — the master is not tall enough to contain the
+     * full panel width in a portrait window. Going full-bleed would mean
+     * outpainting wall above and below; the slats repeat, so it is safe to do
+     * later if the drama is wanted, but it is a new asset rather than a
+     * framing fix and the panel reads without it.
+     */
+    srcMobile: "/media/web/s110-zoom-portrait.webp",
     alt: "Display inteligente S110 na parede de madeira ripada, com todas as funções da casa na tela.",
-    frame: "h-screen w-screen",
+    // Width-driven under `sm`, so the crop lands whole instead of being
+    // re-cropped by object-cover; full-bleed from `sm` up as before.
+    frame: "w-screen aspect-[300/269] sm:aspect-auto sm:h-screen sm:w-screen",
     scale: 4,
     from: 0.25,
   },
@@ -141,13 +181,16 @@ export function ZoomParallax() {
   if (reducedMotion) {
     return (
       <section aria-label="A casa em detalhe" className="bg-sonare-black">
-        <img
-          src={CARDS[0].src}
-          alt={CARDS[0].alt}
-          className="h-auto w-full"
-          loading="lazy"
-          decoding="async"
-        />
+        <picture>
+          {CARDS[0].srcMobile && <source media={MOBILE_MAX} srcSet={CARDS[0].srcMobile} />}
+          <img
+            src={CARDS[0].src}
+            alt={CARDS[0].alt}
+            className="h-auto w-full"
+            loading="lazy"
+            decoding="async"
+          />
+        </picture>
       </section>
     );
   }
@@ -165,16 +208,19 @@ export function ZoomParallax() {
               className="absolute top-0 flex h-full w-full items-center justify-center"
             >
               <div className={`relative ${card.frame}`}>
-                <img
-                  src={card.src}
-                  alt={card.alt}
-                  loading="lazy"
-                  decoding="async"
-                  draggable={false}
-                  className={`h-full w-full object-cover ${
-                    card.from === undefined ? "rounded-md border border-white/10" : ""
-                  }`}
-                />
+                <picture>
+                  {card.srcMobile && <source media={MOBILE_MAX} srcSet={card.srcMobile} />}
+                  <img
+                    src={card.src}
+                    alt={card.alt}
+                    loading="lazy"
+                    decoding="async"
+                    draggable={false}
+                    className={`h-full w-full object-cover ${
+                      card.from === undefined ? "rounded-md border border-white/10" : ""
+                    }`}
+                  />
+                </picture>
               </div>
             </div>
           ))}

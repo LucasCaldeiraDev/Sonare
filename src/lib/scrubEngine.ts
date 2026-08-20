@@ -9,8 +9,13 @@ const EPSILON = FRAME * 0.5;
  * Forward gap (s) above which rate-steering gives up and we seek instead.
  * Below it, playing fast is smoother than seeking; above it, playing would take
  * too long to catch up and read as lag.
+ *
+ * Exported because it is the boundary between this engine's two modes, and a
+ * caller that meters its own input — the mobile touch governor — has to know
+ * where that boundary is to stay on the smooth side of it. See
+ * MobileNarrative's backlog cap.
  */
-const FORWARD_SEEK_GAP = 1.5;
+export const FORWARD_SEEK_GAP = 1.5;
 /** Gap that a playbackRate of exactly 1.0 corresponds to; smaller gaps slow down, larger speed up. */
 const RATE_TIME_CONSTANT = 0.35;
 const MIN_RATE = 0.25;

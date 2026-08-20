@@ -12,7 +12,7 @@ import {
   OVERLAYS,
 } from "../content/timeline";
 import { REFRESH_JOURNEY } from "../lib/scrollOrder";
-import { createScrubEngine, type ScrubEngine } from "../lib/scrubEngine";
+import { createScrubEngine, FORWARD_SEEK_GAP, type ScrubEngine } from "../lib/scrubEngine";
 import { OverlayCard } from "./OverlayCard";
 
 /**
@@ -134,16 +134,68 @@ const PRELOAD_LEAD_FRAMES = 72;
  * is the film advancing, which is precisely the thing being metered.
  */
 const GOVERNOR_FRACTION = 1.0;
-/** Ceiling on the backlog, in seconds of scrolling. Surplus past it is dropped. */
-const GOVERNOR_MAX_BACKLOG_S = 0.9;
+
+/**
+ * Hard cap on the story rate the governor will permit, ABOVE what the refresh
+ * measurement alone would allow — and the reason mobile needs one where
+ * desktop does not.
+ *
+ * Desktop derives its ceiling as refreshHz / 24 and stops there, because on a
+ * desktop the screen genuinely is the binding constraint: a machine with
+ * hardware H.264 decode will feed 4K frames faster than a 60 Hz panel can show
+ * them. A phone inverts that. Here the panel is often 120 Hz — which the
+ * formula reads as licence for a 3x story rate, i.e. 72 decoded frames per
+ * second — while the decoder is simultaneously holding four stacked video
+ * elements alive and losing cycles to the compositor and the scroll. Decode,
+ * not presentation, is what runs out first, and asking for 3x is exactly the
+ * "frames that cannot be presented" case the desktop note warns about: the
+ * playhead runs to the ceiling, arrives, stops, repeats. That burst-pause is
+ * the stutter, and the frames it skips are the scrub engine falling off its
+ * play path into seeks.
+ *
+ * 2x is still double real time — fast enough that a deliberate scroll never
+ * feels held back — and it is a rate a phone can actually sustain.
+ */
+const MOBILE_RATE_CEILING = 2;
+
+/**
+ * Ceiling on the backlog, as a share of the scrub engine's forward-seek gap.
+ *
+ * Not a free number, and the previous 0.9 seconds was: banked story seconds
+ * come out as rateCeiling x this value, so 0.9 let a single swipe bank
+ * 2.5 x 0.9 = 2.25 s of story on a 60 Hz phone and 2.7 s on a 120 Hz one.
+ * FORWARD_SEEK_GAP is 1.5 s. Every fast swipe therefore handed the scrub
+ * engine a gap it is documented to answer by seeking rather than playing —
+ * the governor was reliably pushing the picture onto the expensive path it
+ * exists to keep it off.
+ *
+ * Expressed against that gap instead, so the two cannot drift apart: the
+ * banked surplus stays at 2/3 of the distance the engine will still absorb by
+ * playing. At the 2x ceiling above that is 0.5 s of scrolling — a swipe still
+ * coasts, it just cannot coast past the point where coasting turns into a
+ * jump.
+ */
+const GOVERNOR_BACKLOG_OF_SEEK_GAP = 2 / 3;
+
 /** Refresh rates outside this band are a bad measurement, not a real display. */
 const REFRESH_MIN_HZ = 50;
 const REFRESH_MAX_HZ = 240;
 const REFRESH_FALLBACK_HZ = 60;
 
-/** `?governor=off` restores the raw gesture, for comparing the two by hand. */
-const governorOff =
-  import.meta.env.DEV && new URLSearchParams(window.location.search).get("governor") === "off";
+/**
+ * `?governor=off` restores the raw gesture; `?governor=0.8` scales the budget,
+ * matching the numeric override CanvasNarrative already accepts.
+ *
+ * The numeric form exists because this is the one tuning number that cannot be
+ * settled from a desk: it is bounded by the decoder in the visitor's hand, and
+ * phones differ by more than desktops do. Comparing two values on the actual
+ * device is a query string rather than a rebuild.
+ */
+const governorParam = import.meta.env.DEV
+  ? new URLSearchParams(window.location.search).get("governor")
+  : null;
+const governorOff = governorParam === "off";
+const governorFraction = Number(governorParam) || GOVERNOR_FRACTION;
 
 /**
  * How much of the screen the picture takes, and therefore how much of the room
@@ -267,16 +319,31 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
     gsap.ticker.add(measureRefresh);
 
     /**
-     * Pixels per second the page may scroll: the presentable story rate over
-     * the media's own rate, times the runway. Derived rather than fixed, so a
-     * fast panel is allowed to go faster and a longer runway automatically
+     * Story rate the film may advance at, in multiples of real time. Never
+     * below 1 — the story has to be able to advance at least at its own pace
+     * even on a slow panel — and never above MOBILE_RATE_CEILING, which is
+     * where a phone's decoder gives out well before its screen does.
+     */
+    const rateCeiling = () =>
+      Math.min(MOBILE_RATE_CEILING, Math.max(1, refreshHz / FPS));
+
+    /** Pixels of scrolling that equal one second of story, from the runway. */
+    const pxPerStorySecond = () => (MOBILE_SCROLL_VH_PER_SECOND / 100) * window.innerHeight;
+
+    /**
+     * Pixels per second the page may scroll: the sustainable story rate times
+     * the runway. Derived rather than fixed, so a longer runway automatically
      * permits more scrolling.
      */
-    const governorBudget = () =>
-      Math.min(3, Math.max(1, refreshHz / FPS)) *
-      GOVERNOR_FRACTION *
-      (MOBILE_SCROLL_VH_PER_SECOND / 100) *
-      window.innerHeight;
+    const governorBudget = () => rateCeiling() * governorFraction * pxPerStorySecond();
+
+    /**
+     * Pixels of banked gesture the governor will hold. Expressed through the
+     * scrub engine's own threshold so the two stay tied together — see
+     * GOVERNOR_BACKLOG_OF_SEEK_GAP.
+     */
+    const backlogCap = () =>
+      FORWARD_SEEK_GAP * GOVERNOR_BACKLOG_OF_SEEK_GAP * pxPerStorySecond();
 
     /**
      * The gesture, swallowed. Enabled only while the film owns the screen — the
@@ -340,7 +407,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       // Release whatever the gesture asked for, at the governed rate.
       if (journeyActive && backlog !== 0) {
         const budget = governorBudget();
-        const cap = budget * GOVERNOR_MAX_BACKLOG_S;
+        const cap = backlogCap();
         if (Math.abs(backlog) > cap) backlog = Math.sign(backlog) * cap;
         const step = Math.sign(backlog) * Math.min(Math.abs(backlog), (budget * deltaMs) / 1000);
         backlog -= step;

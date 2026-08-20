@@ -428,14 +428,12 @@ export type MobileSegment = {
  * animates) rather than the door swinging open, and 01 also absorbs what
  * would otherwise have been a separate facade→entrance scene, because
  * splitting that hand-off into its own clip kept re-introducing the same
- * failure. Scene 03 is trimmed 27 frames off its head — its master was
- * generated to start already close on the S110 panel, wider than where 02
- * actually leaves off, so the cut point is the frame inside 03 that measures
- * back onto 02's last frame, not frame 0 of the file. See the four PSNR
- * measurements below: every boundary is a real handover.
+ * failure. Every scene is used whole — the first scene 03 take opened closer
+ * on the S110 than 02 leaves off and shipped briefly with 27 frames trimmed
+ * off its head to reach the matching framing; the take here starts on it
+ * already, so the trim is gone and the scene runs its full 8 s.
  *
- *   01 -> 02  34.2 dB      02 -> 03  26.5 dB (at 03's frame 27)
- *   03 -> 04  27.3 dB
+ *   01 -> 02  34.0 dB      02 -> 03  25.6 dB      03 -> 04  32.1 dB
  *
  * Unrelated framings sit at 10-13 dB (see SEGMENTS' own boundary note above),
  * so all three are genuine matches, not coincidence.
@@ -469,10 +467,10 @@ export const MOBILE_SEGMENTS: MobileSegment[] = [
     id: "gourmet",
     label: "S110 à área gourmet",
     mobileSrc: mobileMediaFor("03"),
-    duration: 6.916667,
-    frames: 166,
+    duration: 8.041667,
+    frames: 193,
     globalStart: 15.083334,
-    globalEnd: 22.000001,
+    globalEnd: 23.125001,
   },
   {
     id: "skyline",
@@ -480,17 +478,17 @@ export const MOBILE_SEGMENTS: MobileSegment[] = [
     mobileSrc: mobileMediaFor("04"),
     duration: 8.041667,
     frames: 193,
-    globalStart: 22.000001,
-    globalEnd: 30.041668,
+    globalStart: 23.125001,
+    globalEnd: 31.166668,
   },
 ];
 
-/** 721 frames: 241 + 121 + 166 + 193, nothing skipped. */
-export const MOBILE_GLOBAL_DURATION = 30.041668;
-export const MOBILE_GLOBAL_FRAMES = 721;
+/** 748 frames: 241 + 121 + 193 + 193, nothing skipped. */
+export const MOBILE_GLOBAL_DURATION = 31.166668;
+export const MOBILE_GLOBAL_FRAMES = 748;
 
 /** Frame index at which each mobile scene starts on the global timeline. */
-export const MOBILE_SEGMENT_START_FRAME = [0, 241, 362, 528];
+export const MOBILE_SEGMENT_START_FRAME = [0, 241, 362, 555];
 
 /**
  * Overlays as AUTHORED against the footage, before the intro offset.
@@ -671,9 +669,11 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     globalStart: 26.125001,
     globalEnd: 28.075001,
     // Early in scene 03, as the camera pulls back off the S110 and starts
-    // travelling toward the gourmet area.
+    // travelling toward the gourmet area. Measured on the current take: the
+    // panel is still readable through local 2.0 s and the passage has taken
+    // over by local 4.0 s.
     globalStartMobile: 16.8,
-    globalEndMobile: 18.6,
+    globalEndMobile: 19.0,
     eyebrow: "Cenas personalizadas",
     title: "Um toque muda o ambiente",
     description:
@@ -690,10 +690,11 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     globalStart: 30.025001,
     globalEnd: 32.725001,
     // The cabinetry LED strip and the ceiling cove are both legible from
-    // local frame ~100 (4.2s) of scene 03, through its settle and into
-    // scene 04's opening frame — the two match at 27.3 dB.
-    globalStartMobile: 19.0,
-    globalEndMobile: 22.3,
+    // local frame 96 (4.0 s) of scene 03 — the passage shot — and stay in
+    // frame through its settle on the island and across into scene 04, which
+    // opens on the identical framing (32.1 dB).
+    globalStartMobile: 19.2,
+    globalEndMobile: 23.4,
     eyebrow: "Controle de iluminação",
     equipment: "Controle de iluminação",
     title: "Iluminação arquitetural",
@@ -712,11 +713,12 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     kind: "equipment",
     globalStart: 34.966668,
     globalEnd: 38.766668,
-    // Scene 04's curtains open fast — mostly done by local frame 60 (2.5s)
+    // Scene 04's curtains open fast — mostly done by local frame 60 (2.5 s)
     // — so the window tracks the actual motion instead of the desktop
-    // scene's slower reveal.
-    globalStartMobile: 22.5,
-    globalEndMobile: 24.7,
+    // scene's slower reveal. Picks up where gourmet-iluminacao leaves off,
+    // one beat after scene 04 begins at 23.125.
+    globalStartMobile: 23.6,
+    globalEndMobile: 25.9,
     eyebrow: "Automação de cortinas",
     equipment: "Automação de cortinas",
     title: "Cortinas automatizadas",

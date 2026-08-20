@@ -20,20 +20,25 @@
 # is a linear motion the model handles. Keeping the approach and the entry in
 # ONE take removed the hand-off that kept re-introducing the problem.
 #
-# SCENE 03 IS TRIMMED AT THE HEAD, and the number is measured, not chosen. Its
-# master was generated to open already close on the S110 panel — closer than
-# where scene 02 actually leaves off, so frame 0 of the file does not match
-# frame 120 of the one before it (16.4 dB, i.e. unrelated framings). Scene 03
-# is a pull-back, so it passes through the right framing on its way out: frame
-# 27 measures 26.5 dB against scene 02's last frame, which is a real handover.
-# The head trim is therefore where the two shots actually meet.
+# EVERY SCENE IS NOW USED WHOLE — no head trims, and that is a change worth
+# recording because it did not start that way. The first scene 03 take opened
+# already closer on the S110 panel than scene 02 leaves off, so its frame 0 did
+# not match (16.4 dB, i.e. unrelated framings); being a pull-back it passed
+# through the right framing on its way out, and the set shipped for a while
+# trimmed 27 frames off its head to land on it. That take is kept beside this
+# one as scene-03-portrait-master-untrimmed.mp4. The regenerated take below
+# starts on the matching framing by itself, so the trim is gone and the scene
+# gets its full 8 s back.
 #
-# BOUNDARIES, measured last-frame-to-first-frame after the trim:
+# BOUNDARIES, measured last-frame-to-first-frame:
 #
-#   01 -> 02  34.2 dB      02 -> 03  26.5 dB      03 -> 04  27.3 dB
+#   01 -> 02  34.0 dB      02 -> 03  25.6 dB      03 -> 04  32.1 dB
 #
 # Unrelated framings sit at 10-13 dB throughout this project, so all three are
-# genuine matches rather than coincidence.
+# genuine matches rather than coincidence. Against the trimmed take that came
+# before, the entry gives up about a decibel and the exit gains nearly five —
+# and a sweep of the new head found its own best match at frame 2, worth only
+# +0.5 dB, which is inside the noise and not worth a special case.
 #
 # CRF 21 AND GOP 6 are unchanged and stay the house numbers, for the reasons
 # the landscape set established: CRF 21 measured SSIM 0,9889 against a
@@ -75,11 +80,14 @@ encode() {
     "$dst"
 }
 
-# scene:master:head-trim-in-frames — see the scene 03 note in the header.
+# scene:master:head-trim-in-frames. The trim column is kept although every
+# scene now reads 0: it is the lever a re-generated take needs when its opening
+# framing lands past the previous scene's last frame, which has happened once
+# already (see the header).
 for spec in \
   "01:scene-01-portrait-master:0" \
   "02:scene-02-portrait-master:0" \
-  "03:scene-03-portrait-master-untrimmed:27" \
+  "03:scene-03-portrait-master:0" \
   "04:scene-04-portrait-master:0"
 do
   IFS=: read -r play master trim <<< "$spec"

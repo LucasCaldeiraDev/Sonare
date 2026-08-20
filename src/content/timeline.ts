@@ -29,6 +29,15 @@ export type Overlay = {
   kind: "narrative" | "equipment";
   globalStart: number;
   globalEnd: number;
+  /**
+   * Mobile's four scenes run at different durations and different cut points
+   * than desktop's five (see MOBILE_SEGMENTS), so a caption timed to when its
+   * equipment is on screen needs its own window there too. Falls back to
+   * globalStart/globalEnd when absent — only the overlays below that actually
+   * need different timing carry these.
+   */
+  globalStartMobile?: number;
+  globalEndMobile?: number;
   eyebrow?: string;
   title: string;
   description: string;
@@ -46,22 +55,6 @@ export type Segment = {
   label: string;
   /** The original Higgsfield master, served as-is. */
   src: string;
-  /**
-   * The portrait derivative: a 1:2 centre crop of the same master at 720x1440.
-   *
-   * A separate FRAMING, not just a smaller file, and that is the point. A phone
-   * shows the journey full-bleed in portrait, so `object-fit: cover` takes a
-   * tall slice out of 16:9 and discards the rest — measured on 375x812 at DPR 2,
-   * the 1080p landscape file had 1421 of its 1920 columns permanently off
-   * screen while the remainder was enlarged 1.50x. Cropping at the source ships
-   * only columns that are shown, and the same phone now enlarges by 1.17x.
-   *
-   * Forward only. Desktop carries reverse companions so scrolling up streams
-   * instead of seeking; at an eighth the size and six frames per GOP, the
-   * mobile decoder seeks backwards cheaply enough that a second set would
-   * double the bytes for nothing. See tools/make-mobile.sh.
-   */
-  mobileSrc: string;
   /**
    * The same footage with its frames in reverse order.
    *
@@ -247,8 +240,8 @@ const reverseMediaFor = (scene: string) =>
  */
 const mobileMediaFor = (scene: string) => `/media/web/scene-${scene}-mobile-bt709-tv-gop6.mp4`;
 
-/** Native pixel dimensions of every file mobileSrc points at. */
-export const MOBILE_SOURCE = { width: 720, height: 1440 } as const;
+/** Native pixel dimensions of every file MOBILE_SEGMENTS points at. */
+export const MOBILE_SOURCE = { width: 720, height: 1280 } as const;
 
 /** Frame 0 of the portrait scene 01, so the hero never opens on black. */
 export const MOBILE_POSTER = "/media/web/scene-01-poster-mobile.webp";
@@ -323,7 +316,6 @@ export const SEGMENTS: Segment[] = [
     index: 1,
     label: "Fachada",
     src: mediaFor("01"),
-    mobileSrc: mobileMediaFor("01"),
     reverseSrc: reverseMediaFor("01"),
     poster: "/media/web/scene-01-poster-desktop.avif",
     duration: 8.041667,
@@ -340,7 +332,6 @@ export const SEGMENTS: Segment[] = [
     index: 2,
     label: "Living",
     src: mediaFor("02"),
-    mobileSrc: mobileMediaFor("02"),
     reverseSrc: reverseMediaFor("02"),
     duration: 10.041667,
     frames: 241,
@@ -356,7 +347,6 @@ export const SEGMENTS: Segment[] = [
     index: 3,
     label: "Display S110",
     src: mediaFor("03"),
-    mobileSrc: mobileMediaFor("03"),
     reverseSrc: reverseMediaFor("03"),
     duration: 8.041667,
     frames: 193,
@@ -372,7 +362,6 @@ export const SEGMENTS: Segment[] = [
     index: 4,
     label: "Área gourmet",
     src: mediaFor("04"),
-    mobileSrc: mobileMediaFor("04"),
     reverseSrc: reverseMediaFor("04"),
     duration: 8.041667,
     frames: 193,
@@ -388,7 +377,6 @@ export const SEGMENTS: Segment[] = [
     index: 5,
     label: "Cortinas e skyline",
     src: mediaFor("05"),
-    mobileSrc: mobileMediaFor("05"),
     reverseSrc: reverseMediaFor("05"),
     duration: 8.041667,
     frames: 193,
@@ -407,6 +395,102 @@ export const GLOBAL_FRAMES = 1013;
 
 /** Frame index at which each segment starts on the global timeline. */
 export const SEGMENT_START_FRAME = [0, 193, 434, 627, 820];
+
+/**
+ * A minimal per-scene descriptor for the mobile set — everything a desktop
+ * Segment carries that MobileNarrative actually uses. No src/reverseSrc/width/
+ * height/mediaFrames/offsetFrames: those exist for the canvas compositor and
+ * the wheel-scrub reverse path, neither of which mobile has (see the "WHAT IS
+ * BORROWED FROM DESKTOP AND WHAT IS NOT" note in MobileNarrative.tsx).
+ */
+export type MobileSegment = {
+  id: string;
+  label: string;
+  mobileSrc: string;
+  duration: number;
+  frames: number;
+  globalStart: number;
+  globalEnd: number;
+};
+
+/**
+ * The mobile set is FOUR scenes, not five, and does not share timing with
+ * SEGMENTS/OVERLAYS above.
+ *
+ * Generated natively in 9:16 on Higgsfield (Seedance 2.5, 720x1280) rather
+ * than cropped from the 16:9 masters — see docs/portrait-mobile-spec.md for
+ * why a crop was rejected (74% of the frame permanently off screen on a real
+ * phone) and docs/portrait-higgsfield-prompts.md for the prompts. Getting a
+ * rigid door-hinge open reliably out of a video model turned out to be the
+ * hard part; a wood pivot door swinging on its own is a well-known weak spot
+ * for these models, so the sequence was re-cut around it: 01 walks through
+ * the sliding glass panel beside the door (which the door itself never
+ * animates) rather than the door swinging open, and 01 also absorbs what
+ * would otherwise have been a separate facade→entrance scene, because
+ * splitting that hand-off into its own clip kept re-introducing the same
+ * failure. Scene 03 is trimmed 27 frames off its head — its master was
+ * generated to start already close on the S110 panel, wider than where 02
+ * actually leaves off, so the cut point is the frame inside 03 that measures
+ * back onto 02's last frame, not frame 0 of the file. See the four PSNR
+ * measurements below: every boundary is a real handover.
+ *
+ *   01 -> 02  34.2 dB      02 -> 03  26.5 dB (at 03's frame 27)
+ *   03 -> 04  27.3 dB
+ *
+ * Unrelated framings sit at 10-13 dB (see SEGMENTS' own boundary note above),
+ * so all three are genuine matches, not coincidence.
+ *
+ * What each scene travels through: 01 facade -> entrance (through the glass
+ * panel, not the door) -> living room / home theatre, settling wide on the
+ * screen and both B&W towers. 02 that same wide shot -> a push-in that ends
+ * close on the S110 panel. 03 pulls back off the S110 and travels to the
+ * gourmet area. 04 gourmet -> curtains open -> skyline.
+ */
+export const MOBILE_SEGMENTS: MobileSegment[] = [
+  {
+    id: "fachada-living",
+    label: "Fachada, entrada e living",
+    mobileSrc: mobileMediaFor("01"),
+    duration: 10.041667,
+    frames: 241,
+    globalStart: 0,
+    globalEnd: 10.041667,
+  },
+  {
+    id: "s110",
+    label: "Living ao Display S110",
+    mobileSrc: mobileMediaFor("02"),
+    duration: 5.041667,
+    frames: 121,
+    globalStart: 10.041667,
+    globalEnd: 15.083334,
+  },
+  {
+    id: "gourmet",
+    label: "S110 à área gourmet",
+    mobileSrc: mobileMediaFor("03"),
+    duration: 6.916667,
+    frames: 166,
+    globalStart: 15.083334,
+    globalEnd: 22.000001,
+  },
+  {
+    id: "skyline",
+    label: "Gourmet, cortinas e skyline",
+    mobileSrc: mobileMediaFor("04"),
+    duration: 8.041667,
+    frames: 193,
+    globalStart: 22.000001,
+    globalEnd: 30.041668,
+  },
+];
+
+/** 721 frames: 241 + 121 + 166 + 193, nothing skipped. */
+export const MOBILE_GLOBAL_DURATION = 30.041668;
+export const MOBILE_GLOBAL_FRAMES = 721;
+
+/** Frame index at which each mobile scene starts on the global timeline. */
+export const MOBILE_SEGMENT_START_FRAME = [0, 241, 362, 528];
 
 /**
  * Overlays as AUTHORED against the footage, before the intro offset.
@@ -439,6 +523,11 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     // 14.24 by almost three seconds.
     globalStart: 4.3,
     globalEnd: 11.5,
+    // Mobile 01 covers facade through the living-room settle in one clip, so
+    // this rides the approach and the arrival at the threshold, clearing the
+    // SIM2 card with margin.
+    globalStartMobile: 1.5,
+    globalEndMobile: 6.0,
     eyebrow: "Chegada",
     title: "Seja bem-vindo",
     description:
@@ -461,6 +550,11 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     // seg2 local 6.20–8.40
     globalStart: 14.241667,
     globalEnd: 16.441667,
+    // Measured on the actual mobile clip: the SIM2 projector reads clearly
+    // on the ceiling from local frame ~160 (6.7s) of scene 01 through its
+    // settle at 10.0s.
+    globalStartMobile: 6.8,
+    globalEndMobile: 9.3,
     eyebrow: "SIM2",
     equipment: "SIM2",
     title: "Projeção cinematográfica",
@@ -488,6 +582,11 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     // seg2 local 7.30–9.40
     globalStart: 15.341667,
     globalEnd: 17.441667,
+    // Both towers are in frame together from local frame ~200 (8.3s) of
+    // scene 01, through the settle and into scene 02's opening push (which
+    // starts on the identical framing — see MOBILE_SEGMENTS).
+    globalStartMobile: 8.3,
+    globalEndMobile: 11.2,
     eyebrow: "Bowers & Wilkins",
     equipment: "Bowers & Wilkins",
     title: "Referência em áudio high-end",
@@ -508,6 +607,11 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     kind: "equipment",
     globalStart: 17.441667,
     globalEnd: 19.483334,
+    // Follows living-bw-1 into scene 02, while a single tower (with its
+    // Tweeter-on-Top) is still readable as the push-in moves past it toward
+    // the S110 wall.
+    globalStartMobile: 11.2,
+    globalEndMobile: 13.0,
     eyebrow: "Bowers & Wilkins",
     equipment: "Bowers & Wilkins",
     title: "Engenharia a serviço do som",
@@ -527,6 +631,11 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     kind: "narrative",
     globalStart: 22.683334,
     globalEnd: 24.583334,
+    // Scene 02 is a fast 5s push straight to the S110 close-up — the panel
+    // is already legible by local frame 60 (2.5s) — so there is no
+    // travelling-shot gap to leave uncaptioned the way desktop does.
+    globalStartMobile: 13.0,
+    globalEndMobile: 14.6,
     eyebrow: "Automação integrada",
     title: "Um único ponto de controle",
     description:
@@ -541,6 +650,11 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     kind: "narrative",
     globalStart: 24.583334,
     globalEnd: 26.125001,
+    // Runs out on the S110 close-up that ends scene 02 and crosses into
+    // scene 03, which opens on the same panel (26.5 dB match — see
+    // MOBILE_SEGMENTS).
+    globalStartMobile: 14.6,
+    globalEndMobile: 16.6,
     eyebrow: "Display S110",
     title: "Tecnologia que desaparece na arquitetura",
     description:
@@ -556,6 +670,10 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     kind: "narrative",
     globalStart: 26.125001,
     globalEnd: 28.075001,
+    // Early in scene 03, as the camera pulls back off the S110 and starts
+    // travelling toward the gourmet area.
+    globalStartMobile: 16.8,
+    globalEndMobile: 18.6,
     eyebrow: "Cenas personalizadas",
     title: "Um toque muda o ambiente",
     description:
@@ -571,6 +689,11 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     kind: "equipment",
     globalStart: 30.025001,
     globalEnd: 32.725001,
+    // The cabinetry LED strip and the ceiling cove are both legible from
+    // local frame ~100 (4.2s) of scene 03, through its settle and into
+    // scene 04's opening frame — the two match at 27.3 dB.
+    globalStartMobile: 19.0,
+    globalEndMobile: 22.3,
     eyebrow: "Controle de iluminação",
     equipment: "Controle de iluminação",
     title: "Iluminação arquitetural",
@@ -589,6 +712,11 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     kind: "equipment",
     globalStart: 34.966668,
     globalEnd: 38.766668,
+    // Scene 04's curtains open fast — mostly done by local frame 60 (2.5s)
+    // — so the window tracks the actual motion instead of the desktop
+    // scene's slower reveal.
+    globalStartMobile: 22.5,
+    globalEndMobile: 24.7,
     eyebrow: "Automação de cortinas",
     equipment: "Automação de cortinas",
     title: "Cortinas automatizadas",
@@ -615,6 +743,12 @@ export const OVERLAYS: Overlay[] = AUTHORED_OVERLAYS.map((o) => ({
   ...o,
   globalStart: +(o.globalStart - INTRO_OFFSET).toFixed(6),
   globalEnd: +(o.globalEnd - INTRO_OFFSET).toFixed(6),
+  ...(o.globalStartMobile !== undefined
+    ? { globalStartMobile: +(o.globalStartMobile - INTRO_OFFSET).toFixed(6) }
+    : {}),
+  ...(o.globalEndMobile !== undefined
+    ? { globalEndMobile: +(o.globalEndMobile - INTRO_OFFSET).toFixed(6) }
+    : {}),
 }));
 
 /**

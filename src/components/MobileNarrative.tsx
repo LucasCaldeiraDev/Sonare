@@ -3,13 +3,13 @@ import { gsap, Observer, ScrollTrigger } from "../lib/gsap";
 import {
   FPS,
   frameToMediaTime,
-  GLOBAL_DURATION,
-  GLOBAL_FRAMES,
+  MOBILE_GLOBAL_DURATION,
+  MOBILE_GLOBAL_FRAMES,
   MOBILE_POSTER,
   MOBILE_SCROLL_VH_PER_SECOND,
+  MOBILE_SEGMENT_START_FRAME,
+  MOBILE_SEGMENTS,
   OVERLAYS,
-  SEGMENT_START_FRAME,
-  SEGMENTS,
 } from "../content/timeline";
 import { REFRESH_JOURNEY } from "../lib/scrollOrder";
 import { createScrubEngine, type ScrubEngine } from "../lib/scrubEngine";
@@ -58,7 +58,7 @@ import { OverlayCard } from "./OverlayCard";
 
 type Props = {
   id?: string;
-  /** Extra scroll runway held past GLOBAL_DURATION, in seconds — see CanvasNarrative. */
+  /** Extra scroll runway held past MOBILE_GLOBAL_DURATION, in seconds — see CanvasNarrative. */
   settle?: number;
   closing?: ReactNode;
   hero?: ReactNode;
@@ -186,7 +186,7 @@ const FRAMES: Record<string, FrameMode> = {
   full: {
     id: "full",
     field: "26%",
-    src: (i) => SEGMENTS[i - 1].mobileSrc,
+    src: (i) => MOBILE_SEGMENTS[i - 1].mobileSrc,
     videoBox: "absolute inset-0 z-[2]",
     // svh, not lvh: the frame may run under the address bar, the words may not.
     copyBox: "absolute inset-x-0 top-0 z-30 h-[100svh]",
@@ -228,8 +228,8 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
     const section = sectionRef.current;
     if (!section) return;
 
-    const total = GLOBAL_DURATION + settle;
-    const engines: (ScrubEngine | null)[] = SEGMENTS.map((seg, i) => {
+    const total = MOBILE_GLOBAL_DURATION + settle;
+    const engines: (ScrubEngine | null)[] = MOBILE_SEGMENTS.map((seg, i) => {
       const el = videoRefs.current[i];
       return el ? createScrubEngine(el, seg.duration) : null;
     });
@@ -305,15 +305,15 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
     /** Global logical frame -> which segment holds it, and where inside it. */
     const locate = (globalFrame: number) => {
       let index = 0;
-      for (let i = SEGMENTS.length - 1; i >= 0; i--) {
-        if (globalFrame >= SEGMENT_START_FRAME[i]) {
+      for (let i = MOBILE_SEGMENTS.length - 1; i >= 0; i--) {
+        if (globalFrame >= MOBILE_SEGMENT_START_FRAME[i]) {
           index = i;
           break;
         }
       }
       const local = Math.min(
-        Math.max(globalFrame - SEGMENT_START_FRAME[index], 0),
-        SEGMENTS[index].frames - 1,
+        Math.max(globalFrame - MOBILE_SEGMENT_START_FRAME[index], 0),
+        MOBILE_SEGMENTS[index].frames - 1,
       );
       return { index, local };
     };
@@ -364,13 +364,13 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       // Keep the fractional part: the engine quantizes to whole frames itself,
       // and handing it the rounded value first would quantize twice.
       const fraction = target - Math.floor(target);
-      const seconds = frameToMediaTime(Math.min(local + fraction, SEGMENTS[index].frames - 1));
+      const seconds = frameToMediaTime(Math.min(local + fraction, MOBILE_SEGMENTS[index].frames - 1));
 
       engines[index]?.setTarget(seconds);
 
       // The next track is warmed from inside the current one, never at the
       // boundary — a fetch started at the moment it is needed is already late.
-      const nextStart = SEGMENT_START_FRAME[index + 1];
+      const nextStart = MOBILE_SEGMENT_START_FRAME[index + 1];
       if (nextStart !== undefined && target > nextStart - PRELOAD_LEAD_FRAMES) warm(index + 1);
       warm(index);
 
@@ -452,7 +452,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         const t = tl.time();
         targetFrameRef.current = Math.max(
           0,
-          Math.min(GLOBAL_FRAMES - 1, (t / GLOBAL_DURATION) * (GLOBAL_FRAMES - 1)),
+          Math.min(MOBILE_GLOBAL_FRAMES - 1, (t / MOBILE_GLOBAL_DURATION) * (MOBILE_GLOBAL_FRAMES - 1)),
         );
       });
 
@@ -461,36 +461,46 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         tl.set(heroRef.current, { pointerEvents: "none" }, 1.4);
       }
 
-      // Identical windows and easing to desktop, so a caption arrives on the
-      // same frame of footage in both modes.
+      // Same copy and easing as desktop, but mobile's four scenes run at
+      // different durations and cut points (see MOBILE_SEGMENTS), so a
+      // caption whose equipment moved to a different moment carries its own
+      // globalStartMobile/globalEndMobile — falling back to desktop's timing
+      // for the ones that did not need to move.
       OVERLAYS.forEach((o) => {
         const el = overlayRefs.current[o.id];
         if (!el) return;
         const position = o.positionMobile ?? o.position;
         const rise = position.startsWith("top") ? -18 : 22;
+        const start = o.globalStartMobile ?? o.globalStart;
+        const end = o.globalEndMobile ?? o.globalEnd;
         tl.fromTo(
           el,
           { opacity: 0, y: rise },
           { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" },
-          o.globalStart,
+          start,
         );
         tl.to(
           el,
           { opacity: 0, y: -rise * 0.6, duration: 0.38, ease: "power1.in" },
-          Math.max(o.globalEnd - 0.38, o.globalStart + 0.55),
+          Math.max(end - 0.38, start + 0.55),
         );
       });
 
       if (closing && closingRef.current) {
         if (scrimRef.current) {
-          tl.fromTo(scrimRef.current, { opacity: 0 }, { opacity: 1, duration: 1 }, GLOBAL_DURATION - 0.5);
+          tl.fromTo(
+            scrimRef.current,
+            { opacity: 0 },
+            { opacity: 1, duration: 1 },
+            MOBILE_GLOBAL_DURATION - 0.5,
+          );
         }
-        tl.set(closingRef.current, { pointerEvents: "auto" }, GLOBAL_DURATION);
+        tl.set(closingRef.current, { pointerEvents: "auto" }, MOBILE_GLOBAL_DURATION);
         tl.fromTo(
           closingRef.current,
           { opacity: 0, y: 24 },
           { opacity: 1, y: 0, duration: 1, ease: "power2.out" },
-          GLOBAL_DURATION - 0.1,
+          MOBILE_GLOBAL_DURATION - 0.1,
         );
       }
     }, section);
@@ -543,18 +553,18 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       id={id}
       className="relative h-[100lvh] w-full overflow-hidden bg-sonare-black"
     >
-      {/* Five forward tracks, stacked. Opacity is written imperatively by the
+      {/* Four forward tracks, stacked. Opacity is written imperatively by the
           handover, so a scene change costs no React render. The poster carries
           the opening frame until scene 01 has one of its own — without it the
           hero opens on the section's own black. */}
       <div className={`overflow-hidden bg-sonare-black ${FRAME.videoBox}`}>
-        {SEGMENTS.map((seg, i) => (
+        {MOBILE_SEGMENTS.map((seg, i) => (
           <video
             key={seg.id}
             ref={(el) => {
               videoRefs.current[i] = el;
             }}
-            src={FRAME.src(seg.index)}
+            src={FRAME.src(i + 1)}
             poster={i === 0 && FRAME.id === "full" ? MOBILE_POSTER : undefined}
             muted
             playsInline

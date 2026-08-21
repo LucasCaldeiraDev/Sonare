@@ -18,8 +18,69 @@ const EPSILON = FRAME * 0.5;
 export const FORWARD_SEEK_GAP = 1.5;
 /** Gap that a playbackRate of exactly 1.0 corresponds to; smaller gaps slow down, larger speed up. */
 const RATE_TIME_CONSTANT = 0.35;
-const MIN_RATE = 0.25;
-const MAX_RATE = 3;
+
+/**
+ * Floor once the debt is nearly settled — low enough to ease to rest, and only
+ * ever reached inside TAIL_FLOOR_FRAMES of the target. See TAIL_FLOOR_FRAMES
+ * for why it is not the floor that matters.
+ */
+const RATE_MIN = 0.08;
+
+/**
+ * Default ceiling, used only when a caller does not supply its own.
+ *
+ * A caller that meters its own input should pass `rateCeiling` instead, so the
+ * player and whatever is feeding it cannot disagree about how fast the story
+ * may advance — see MobileNarrative, where both come from one function.
+ * Letting the player run faster than the feeder will ever ask for buys
+ * nothing: it only lets the picture overshoot and then need correcting.
+ */
+const DEFAULT_MAX_RATE = 3;
+
+/**
+ * Below this the rate is driven by the gap alone; above it the scroll's own
+ * velocity is fed forward and the gap becomes a correction on top of it.
+ *
+ * Rate from the gap alone has a blind spot at exactly the moment a scene
+ * starts: the incoming segment enters with delta ~0, so it is commanded to
+ * crawl and has to wait for a gap to build before it moves properly. Seeding
+ * the rate with how fast the story is already advancing means a new scene
+ * picks up at the speed the last one was running. Ported from
+ * CanvasNarrative, which found the same sag at every crossing.
+ */
+const ADVANCING_VEL_MIN = 0.15;
+
+/**
+ * While more than this many frames are owed, the picture may not finish
+ * slower than real time.
+ *
+ * This is the "travadinha" at the end of a fast scroll, and it is not a
+ * dropped frame — it is a commanded crawl. When a gesture lands, the measured
+ * velocity collapses ahead of the remaining gap, so a rate of
+ * `velocity + delta/TAU` decays to a 0.2-0.5x crawl exactly while three to
+ * five frames are still owed. Desktop measured 123-314 ms inter-frame gaps
+ * right after every energetic stop from precisely this. While more than two
+ * frames are outstanding the shot is still visibly in motion and finishing it
+ * below 1x reads as a freeze; past that the ordinary formula eases it to rest.
+ * Steady slow scrolling never trips it, because there the equilibrium gap sits
+ * well under two frames.
+ */
+const TAIL_FLOOR_FRAMES = 2;
+
+/**
+ * How far, in frames, the picture may run AHEAD of the scroll before it is
+ * simply held.
+ *
+ * The floors above mean the playhead outruns a scroll that is slower than they
+ * are, so something has to bound the lead. Holding is the right answer and a
+ * backward seek is the wrong one: a media element cannot play in reverse, so
+ * every backward correction costs seek latency, and on a phone — which carries
+ * no reverse companions, deliberately — that is the single most expensive
+ * thing this engine can do. Pausing lets the target simply walk into the frame
+ * already on screen, at no cost. Only a lead past this leash, or a story
+ * genuinely running backwards, is worth a seek.
+ */
+const LEAD_MAX_FRAMES = 12;
 /** A seek slower than this counts against the health score used for tier fallback. */
 const SLOW_SEEK_MS = 220;
 
@@ -51,6 +112,19 @@ export type ScrubEngine = {
   currentTime: () => number;
   /** True only while the playhead is being moved by seeks (reverse / big jump). */
   isSeekDriven: () => boolean;
+  /** Smoothed target velocity, in footage-seconds per wall-second. */
+  velocity: () => number;
+  /**
+   * Hand this engine a velocity it has not measured yet.
+   *
+   * Each scene owns its own engine, so an incoming one starts at zero and has
+   * to rebuild the estimate from scratch — which is a sag in the rate at
+   * exactly the moment a scene begins, since the feed-forward term is the part
+   * that keeps the picture moving with the scroll rather than behind it.
+   * Seeding it from the outgoing engine means a new scene picks up at the
+   * speed the last one was running.
+   */
+  seedVelocity: (v: number) => void;
   stats: () => ScrubStats;
   destroy: () => void;
 };
@@ -84,6 +158,16 @@ type EngineState = {
    * is the only mode that pays seek latency.
    */
   mode: "idle" | "play" | "seek";
+  /** Ceiling on playbackRate — see DEFAULT_MAX_RATE. */
+  rateCeiling: () => number;
+};
+
+export type ScrubOptions = {
+  /**
+   * Ceiling on playbackRate, read every tick so a caller whose own ceiling is
+   * measured at runtime stays in step with it. Defaults to DEFAULT_MAX_RATE.
+   */
+  rateCeiling?: () => number;
 };
 
 const engines = new Set<EngineState>();
@@ -141,17 +225,34 @@ function tick() {
 
     const delta = s.target - v.currentTime;
     const abs = Math.abs(delta);
+    /** The story is being carried forward, as opposed to settling or reversing. */
+    const advancing = s.velocity > ADVANCING_VEL_MIN;
 
-    // Close enough — hold this frame.
-    if (abs < EPSILON) {
+    // The picture is AHEAD of the scroll.
+    //
+    // While the story is still advancing this is the floors doing their job,
+    // not an error, so it is HELD rather than corrected: the target walks into
+    // the frame already on screen and playback resumes underneath it. Only a
+    // lead past the leash — or a story actually running backwards, where
+    // waiting would never converge — is worth the seek. See LEAD_MAX_FRAMES.
+    if (delta < 0 && advancing && -delta <= LEAD_MAX_FRAMES * FRAME) {
       if (!v.paused) v.pause();
       s.mode = "idle";
       continue;
     }
 
-    // Backwards: media elements cannot play in reverse, so this is the one case
-    // that must seek. Single in-flight, frame-quantized, aimed ahead of the
-    // scroll by one seek-latency.
+    // Close enough, and not being carried — hold this frame. While advancing
+    // the floors below deliberately keep playing through a gap this small,
+    // which is what stops the pause/play cycling at low speed.
+    if (abs < EPSILON && !advancing) {
+      if (!v.paused) v.pause();
+      s.mode = "idle";
+      continue;
+    }
+
+    // Backwards past the leash: media elements cannot play in reverse, so this
+    // is the one case that must seek. Single in-flight, frame-quantized, aimed
+    // ahead of the scroll by one seek-latency.
     if (delta < 0) {
       if (!v.paused) v.pause();
       s.mode = "seek";
@@ -173,7 +274,14 @@ function tick() {
     // the movement its damped, cinematic feel.
     if (s.seeking) continue;
     s.mode = "play";
-    const rate = clamp(delta / RATE_TIME_CONSTANT, MIN_RATE, MAX_RATE);
+    /**
+     * Feed-forward on the scroll's own velocity, with the gap only as a
+     * correction, floored so a shot still visibly in motion never finishes
+     * below real time, and ceilinged by whatever is metering the input.
+     */
+    const floor = delta > TAIL_FLOOR_FRAMES * FRAME ? 1 : RATE_MIN;
+    const feedForward = advancing ? s.velocity : 0;
+    const rate = clamp(feedForward + delta / RATE_TIME_CONSTANT, floor, s.rateCeiling());
     if (Math.abs(v.playbackRate - rate) > 0.02) v.playbackRate = rate;
     if (v.paused) {
       const p = v.play();
@@ -182,7 +290,12 @@ function tick() {
   }
 }
 
-export function createScrubEngine(video: HTMLVideoElement, duration: number): ScrubEngine {
+export function createScrubEngine(
+  video: HTMLVideoElement,
+  duration: number,
+  options: ScrubOptions = {},
+): ScrubEngine {
+  const rateCeiling = options.rateCeiling ?? (() => DEFAULT_MAX_RATE);
   const state: EngineState = {
     video,
     duration,
@@ -196,6 +309,7 @@ export function createScrubEngine(video: HTMLVideoElement, duration: number): Sc
     lastTarget: 0,
     lastTargetAt: 0,
     mode: "idle",
+    rateCeiling,
     stats: {
       seekRequests: 0,
       seeksCompleted: 0,
@@ -249,6 +363,10 @@ export function createScrubEngine(video: HTMLVideoElement, duration: number): Sc
       state.stats.seeksCompleted >= STRUGGLE_MIN_SEEKS && state.stats.avgSeekMs > STRUGGLE_AVG_MS,
     currentTime: () => state.video.currentTime,
     isSeekDriven: () => state.mode === "seek",
+    velocity: () => state.velocity,
+    seedVelocity: (v: number) => {
+      state.velocity = v;
+    },
     setElement: (el: HTMLVideoElement) => {
       if (el === state.video) return;
       // Hand the playhead over so the swap is invisible, then re-bind listeners.

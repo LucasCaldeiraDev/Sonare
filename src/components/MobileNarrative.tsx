@@ -18,11 +18,11 @@ import { OverlayCard } from "./OverlayCard";
 /**
  * The journey on a phone: one pinned frame, the scroll driving global time.
  *
- * This replaces a fallback that played the five scenes as five separate
+ * This replaces a fallback that played the scenes as separate
  * autoplaying sections. That fallback was honest about what had been validated
  * — it was written before the film had ever run on a handset — but it broke the
  * one thing the piece is about. The visitor was not moving through a house; the
- * visitor was watching five clips that happened to be stacked vertically, each
+ * visitor was watching clips that happened to be stacked vertically, each
  * running on its own clock at its own speed regardless of the gesture.
  *
  * WHAT IS BORROWED FROM DESKTOP AND WHAT IS NOT. The scroll-to-time mapping,
@@ -37,7 +37,7 @@ import { OverlayCard } from "./OverlayCard";
  *                       per presented frame is a cost a phone pays in battery
  *                       for a seam it would not have shown anyway.
  *   reverse tracks      Doubling the bytes to make scrolling up stream instead
- *                       of seek is a trade worth making at 4K. At 720x1440 with
+ *                       of seek is a trade worth making at 4K. At 720x1280 with
  *                       a keyframe every six frames, it is not.
  *   the wheel governor  There is no wheel. Its touch equivalent would be
  *                       hijacking the scroll, which costs more than it buys.
@@ -105,6 +105,72 @@ const HANDOVER_MAX_MS = 220;
  * the time the gate asks for it.
  */
 const PRELOAD_LEAD_FRAMES = 72;
+
+/**
+ * Length of each seam dissolve, in logical frames, driven by scroll POSITION
+ * rather than wall clock so it plays and reverses with the gesture.
+ *
+ * Longer than desktop's flat 3, and the reason is a property these two seams
+ * have that desktop's do not: the INCOMING scene is nearly still. Measured
+ * between its own first two frames, scene 03 opens at 36.5 dB and scene 04 at
+ * 56.1 dB — the second is essentially a frozen frame. That cuts both ways.
+ * It is why the step is so visible (there is no motion for it to hide behind)
+ * and it is also why a long dissolve is safe here: cross-fading two nearly
+ * identical stills cannot ghost, because neither picture is moving during the
+ * fade. Desktop's 3 frames were chosen over footage that IS moving, where a
+ * long blend would smear.
+ *
+ * Only one seam still needs it. 02 -> 03 was the other, and it is now a
+ * straight cut again: the four interpolated frames appended to scene 02 put
+ * the join within about a decibel of the camera's own per-frame travel, and a
+ * dissolve over a seam that is genuinely continuous only softens something
+ * that did not need softening.
+ */
+const SEAM_FADE_FRAMES: Record<number, number> = { 3: 10 };
+
+/**
+ * Scene INDEXES whose start is dissolved rather than cut.
+ *
+ * Measured the way CanvasNarrative measures its own seams, which is the only
+ * fair yardstick: a jump matters in proportion to the motion it has to hide
+ * behind, so each seam is compared against the step the INCOMING scene takes
+ * between its own first two frames.
+ *
+ *   01 -> 02   seam 34.0 dB vs own step 26.0 — 8.0 dB BETTER than the motion
+ *              around it. Scene 02 opens on a push-in, and the join is
+ *              cleaner than one frame of that push. Cut, and invisible.
+ *   02 -> 03   seam 29.5 dB vs the bridged scene 02's own closing steps of
+ *              31.5 / 30.4 / 30.9 — about a decibel adrift, i.e. one more
+ *              frame of the same camera travel. Cut. This one was 25.5 dB
+ *              and 10.9 adrift until four interpolated frames were appended
+ *              to scene 02 to fill a real hole in the camera path; see
+ *              tools/make-mobile.sh.
+ *   03 -> 04   seam 33.8 dB vs own step 56.1 — 22 dB adrift, and now the only
+ *              one left. Scene 04 opens nearly frozen; against a picture that
+ *              still, even a mild step reads as a pop. This is the seam the
+ *              raw numbers flatter and the eye does not, and unlike 02 -> 03
+ *              it is not a position offset at all: a translation search over
+ *              +/-12 px in both axes finds its optimum at exactly dx=0, dy=0,
+ *              so there is no hole to bridge and nothing to align.
+ */
+const SEAM_AT = new Set([3]);
+
+/**
+ * Smoothstep on the dissolve, which is what buys the extra length for free.
+ *
+ * A linear fade spends as long near 50/50 as it does anywhere else, and 50/50
+ * is the one mixture that reads as a double image if the visitor happens to
+ * stop there — the risk that normally argues against a long dissolve. This
+ * curve is flat at both ends and steepest in the middle, so it eases in and
+ * out of the blend and crosses the ambiguous centre half again as fast as a
+ * linear ramp would. The window gets longer where it helps and shorter where
+ * it hurts.
+ */
+const smoothstep = (t: number) => t * t * (3 - 2 * t);
+
+/** `?seam=off` restores the hard cut, for comparing the two by hand. */
+const seamOn =
+  !import.meta.env.DEV || new URLSearchParams(window.location.search).get("seam") !== "off";
 
 /**
  * The touch governor — the wheel governor from CanvasNarrative, ported to the
@@ -198,72 +264,20 @@ const governorOff = governorParam === "off";
 const governorFraction = Number(governorParam) || GOVERNOR_FRACTION;
 
 /**
- * How much of the screen the picture takes, and therefore how much of the room
- * you get to see. `?frame=45` and `?frame=169` in development.
+ * The picture fills the screen, and that is the only framing there is.
  *
- * THESE ARE THE ONLY THREE ANSWERS THERE ARE, and the reason is worth stating
- * because "zoom out a bit" sounds like a setting and is not one. With the
- * picture filling the height of a portrait screen, object-fit: cover decides the
- * visible horizontal field from the screen's aspect ratio alone — about 26% of
- * a 16:9 frame on a 430x932 phone — and cropping the FILE wider cannot change
- * that, because the surplus is exactly what cover throws away. The only way to
- * see more of the room is for the picture to stop filling the height. So each
- * option below is a different answer to one question: how much screen to give
- * back in exchange for how much more scene.
- *
- * Counter-intuitively the wider framings are also the LIGHTER ones — 16,6 MB
- * for the whole 4:5 set and 11,8 MB for 16:9, against 22,19 MB for full-bleed —
- * because a shorter box needs fewer rows of pixels to fill it sharply.
- *
- * FULL IS STILL THE DEFAULT, deliberately. Only its media lives in public/; the
- * other two are served from media-comparison/ the same way ?temporalMedia=48 is,
- * so they resolve while developing and cannot reach a build. Promoting whichever
- * wins is a separate, explicit step — moving five files and changing the default
- * here — rather than something that happens by leaving a flag switched on.
+ * This carried two alternatives for a while — `?frame=45` and `?frame=169`,
+ * which gave screen height back in exchange for seeing more of the room. They
+ * existed to settle a question the LANDSCAPE media posed: with a 16:9 frame
+ * filling a portrait screen, object-fit: cover decided the visible field from
+ * the screen's ratio alone and discarded about three quarters of every shot,
+ * and no crop of the file could change that. Framing the footage vertically in
+ * the first place answered it instead, so the alternatives went out with the
+ * media they pointed at. See docs/portrait-mobile-spec.md.
  */
-type FrameMode = {
-  id: string;
-  /** Share of the 3840px master visible on a 430px-wide phone. */
-  field: string;
-  src: (index: number) => string;
-  /** The picture's box inside the pinned section. */
-  videoBox: string;
-  /** Where the captions, the hero and the closing live. */
-  copyBox: string;
-};
-
-const scene = (index: number) => String(index).padStart(2, "0");
-
-const FRAMES: Record<string, FrameMode> = {
-  full: {
-    id: "full",
-    field: "26%",
-    src: (i) => MOBILE_SEGMENTS[i - 1].mobileSrc,
-    videoBox: "absolute inset-0 z-[2]",
-    // svh, not lvh: the frame may run under the address bar, the words may not.
-    copyBox: "absolute inset-x-0 top-0 z-30 h-[100svh]",
-  },
-  45: {
-    id: "45",
-    field: "45%",
-    src: (i) => `/media-comparison/framing/scene-${scene(i)}-4x5.mp4`,
-    // 4:5 at full width is 125vw tall, which is where the copy then starts.
-    videoBox: "absolute inset-x-0 top-0 z-[2] h-[125vw]",
-    copyBox: "absolute inset-x-0 bottom-0 top-[125vw] z-30",
-  },
-  169: {
-    id: "169",
-    field: "100%",
-    src: (i) => `/media-comparison/framing/scene-${scene(i)}-16x9.mp4`,
-    videoBox: "absolute inset-x-0 top-0 z-[2] h-[56.25vw]",
-    copyBox: "absolute inset-x-0 bottom-0 top-[56.25vw] z-30",
-  },
-};
-
-const frameFlag = import.meta.env.DEV
-  ? new URLSearchParams(window.location.search).get("frame")
-  : null;
-const FRAME = (frameFlag && FRAMES[frameFlag]) || FRAMES.full;
+const VIDEO_BOX = "absolute inset-0 z-[2]";
+/** svh, not lvh: the frame may run under the address bar, the words may not. */
+const COPY_BOX = "absolute inset-x-0 top-0 z-30 h-[100svh]";
 
 export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
@@ -281,15 +295,13 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
     if (!section) return;
 
     const total = MOBILE_GLOBAL_DURATION + settle;
-    const engines: (ScrubEngine | null)[] = MOBILE_SEGMENTS.map((seg, i) => {
-      const el = videoRefs.current[i];
-      return el ? createScrubEngine(el, seg.duration) : null;
-    });
 
     /** The track currently on screen. Only this one is ever targeted at the scroll. */
     let active = 0;
     /** Non-null while the gate is holding the outgoing frame for an incoming one. */
     let gate: { to: number; since: number } | null = null;
+    /** True while a seam dissolve is on screen, so it can be cleared exactly once. */
+    let dissolving = false;
 
     /**
      * Governor state. `backlog` is scroll the visitor has asked for and not yet
@@ -326,6 +338,23 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
      */
     const rateCeiling = () =>
       Math.min(MOBILE_RATE_CEILING, Math.max(1, refreshHz / FPS));
+
+    /**
+     * The scrub engines, ceilinged by the SAME function the governor spends
+     * against.
+     *
+     * They have to come from one place. The governor decides how fast the
+     * story may be asked to advance and the engine decides how fast the
+     * picture is allowed to chase it; if the second is the larger of the two,
+     * the extra is not headroom, it is licence to overshoot a target the
+     * governor was never going to move that fast — and every overshoot on a
+     * phone is paid for backwards, where there are no reverse companions to
+     * play through. One function, read live, keeps them from disagreeing.
+     */
+    const engines: (ScrubEngine | null)[] = MOBILE_SEGMENTS.map((seg, i) => {
+      const el = videoRefs.current[i];
+      return el ? createScrubEngine(el, seg.duration, { rateCeiling }) : null;
+    });
 
     /** Pixels of scrolling that equal one second of story, from the runway. */
     const pxPerStorySecond = () => (MOBILE_SCROLL_VH_PER_SECOND / 100) * window.innerHeight;
@@ -395,12 +424,96 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       if (el.readyState === 0) el.load();
     };
 
-    const show = (i: number) => {
+    /**
+     * Write the stack's opacities: the active track at full, everything else
+     * hidden, except during a seam dissolve where the outgoing track is still
+     * underneath.
+     *
+     * Which of the two carries the alpha is decided by DOM order, not by which
+     * is arriving: these are stacked elements, so the LATER one paints on top
+     * and is the only one whose opacity the eye can see change. Travelling
+     * forward that is the incoming track, which fades up; travelling backwards
+     * it is the outgoing one, which fades down. Fading the wrong one would
+     * simply do nothing, which is the sort of bug that looks like the dissolve
+     * "not working" on one scroll direction only.
+     */
+    const paint = (i: number, under: number, alpha: number) => {
       videoRefs.current.forEach((el, j) => {
-        if (el) el.style.opacity = j === i ? "1" : "0";
+        if (!el) return;
+        if (under < 0) {
+          el.style.opacity = j === i ? "1" : "0";
+          return;
+        }
+        const top = Math.max(i, under);
+        if (j === i) el.style.opacity = i === top ? String(alpha) : "1";
+        else if (j === under) el.style.opacity = under === top ? String(1 - alpha) : "1";
+        else el.style.opacity = "0";
       });
+    };
+
+    /**
+     * Decide and write this frame's opacities, dissolve included.
+     *
+     * Both the crossing and the steady state come through here, and they have
+     * to: the crossing lands INSIDE the dissolve window, so a hard paint there
+     * would show the incoming scene whole for one tick before the fade started
+     * — a flash of exactly the cut the dissolve exists to remove.
+     *
+     * `force` is what keeps the steady state cheap. Opacity is only rewritten
+     * while the dissolve is actually changing, or once on the way out of one;
+     * holding a scene does not need four style writes sixty times a second.
+     */
+    const paintFor = (i: number, target: number, force = false) => {
+      let under = -1;
+      let alpha = 1;
+      const fade = SEAM_FADE_FRAMES[i];
+      if (seamOn && SEAM_AT.has(i) && fade) {
+        const into = target - MOBILE_SEGMENT_START_FRAME[i];
+        if (into >= 0 && into < fade) {
+          const prev = i - 1;
+          const prevEl = prev >= 0 ? videoRefs.current[prev] : null;
+          /**
+           * Only dissolve from a track that genuinely handed over — one
+           * parked on its own last frame. Arrive here by a jump instead and
+           * the previous element is sitting on unrelated footage, where
+           * fading from it is worse than the cut it replaces.
+           */
+          if (
+            prevEl &&
+            prevEl.readyState >= 2 &&
+            prevEl.currentTime >= frameToMediaTime(MOBILE_SEGMENTS[prev].frames - 1) - fade / FPS
+          ) {
+            under = prev;
+            alpha = smoothstep((into + 1) / (fade + 1));
+          }
+        }
+      }
+      if (under >= 0) {
+        paint(i, under, alpha);
+        dissolving = true;
+      } else if (dissolving || force) {
+        paint(i, -1, 1);
+        dissolving = false;
+      }
+    };
+
+    const show = (i: number, target: number) => {
+      /**
+       * Carry the outgoing engine's velocity into the incoming one.
+       *
+       * Each scene owns its engine, so without this the new one starts at
+       * zero and the rate loses its feed-forward term for the ~170 ms it
+       * takes to rebuild — a sag in the picture at exactly the moment a scene
+       * begins, which is felt as a hitch at the join rather than as a wrong
+       * frame. Seeded here, the incoming scene picks up at the speed the
+       * outgoing one was running.
+       */
+      const from = engines[active];
+      const to = engines[i];
+      if (from && to && i !== active) to.seedVelocity(from.velocity());
       active = i;
       gate = null;
+      paintFor(i, target, true);
     };
 
     const drive = (_time: number, deltaMs: number) => {
@@ -443,6 +556,9 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
 
       if (index === active) {
         gate = null;
+        // The seam dissolve, driven by scroll POSITION so it plays and
+        // reverses with the gesture instead of running on its own clock.
+        paintFor(index, target);
         return;
       }
 
@@ -450,7 +566,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       // and hold the outgoing picture until it can actually show the frame.
       const el = videoRefs.current[index];
       warm(index);
-      if (!el) return show(index);
+      if (!el) return show(index, target);
 
       const now = performance.now();
       if (!gate || gate.to !== index) gate = { to: index, since: now };
@@ -461,7 +577,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       // the outgoing picture one more tick instead of flashing a blank frame.
       const landed = el.readyState >= 2 && Math.abs(el.currentTime - seconds) < HANDOVER_TOL;
       const forced = now - gate.since > HANDOVER_MAX_MS && el.readyState >= 2;
-      if (landed || forced) show(index);
+      if (landed || forced) show(index, target);
     };
 
     gsap.ticker.add(drive);
@@ -624,15 +740,15 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           handover, so a scene change costs no React render. The poster carries
           the opening frame until scene 01 has one of its own — without it the
           hero opens on the section's own black. */}
-      <div className={`overflow-hidden bg-sonare-black ${FRAME.videoBox}`}>
+      <div className={`overflow-hidden bg-sonare-black ${VIDEO_BOX}`}>
         {MOBILE_SEGMENTS.map((seg, i) => (
           <video
             key={seg.id}
             ref={(el) => {
               videoRefs.current[i] = el;
             }}
-            src={FRAME.src(i + 1)}
-            poster={i === 0 && FRAME.id === "full" ? MOBILE_POSTER : undefined}
+            src={seg.mobileSrc}
+            poster={i === 0 ? MOBILE_POSTER : undefined}
             muted
             playsInline
             preload={i === 0 ? "auto" : "none"}
@@ -661,7 +777,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           pointer-events are off on the layer and switched back on per child, so
           this box cannot swallow a tap meant for the page — the hero already
           hands its own back to the timeline at 1.4s. */}
-      <div className={`pointer-events-none ${FRAME.copyBox}`}>
+      <div className={`pointer-events-none ${COPY_BOX}`}>
         {hero && (
           <div ref={heroRef} className="pointer-events-auto absolute inset-0">
             {hero}

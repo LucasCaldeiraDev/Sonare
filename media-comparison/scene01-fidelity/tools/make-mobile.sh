@@ -30,15 +30,40 @@
 # starts on the matching framing by itself, so the trim is gone and the scene
 # gets its full 8 s back.
 #
+# THE HOLE IN THE CAMERA PATH, and why scene 02 has four frames that were
+# never generated.
+#
+# Scene 03 opens roughly five frames further along the camera path than scene
+# 02 ends. That is measured, not inferred: calibrated against scene 02's own
+# travel at its tail (~31.5 dB per frame), the 25.5 dB join sits between four
+# frames of that travel (26.1 dB) and six (24.6 dB).
+#
+# Three separate takes of scene 03 were generated trying to close it, and the
+# third was conditioned on scene 02's ACTUAL last frame rather than on a
+# synthetic still. It changed nothing: 25.49 dB against the still-conditioned
+# take's 25.53. The two takes agree with EACH OTHER at 39.97 dB — they open in
+# the same place — while both sit ~25.5 dB from where scene 02 ends, with the
+# same ~10 px offset. The conditioning image does not decide where this model
+# opens a shot, so a fourth take would not have closed it either.
+#
+# Trimming cannot close it in the other direction: sweeping scene 02's tail,
+# the match RISES monotonically to its very last frame and is still rising
+# there. Scene 02 already ends at the best point it has; it simply stops short.
+#
+# So the four missing frames are synthesised instead — motion-compensated
+# interpolation between scene 02's last real frame and scene 03's first,
+# appended to scene 02. The mismatch is a near-pure ~10 px translation across
+# a flat wood wall, which is the case optical flow handles best, and the
+# result holds up: the join now measures 29.5 dB against the bridged scene's
+# own closing steps of 31.5 / 30.4 / 30.9 dB. A seam within about a decibel of
+# the camera's own per-frame travel is one more frame of that travel.
+#
 # BOUNDARIES, measured last-frame-to-first-frame:
 #
-#   01 -> 02  34.0 dB      02 -> 03  25.6 dB      03 -> 04  32.1 dB
+#   01 -> 02  34.0 dB      02 -> 03  29.5 dB      03 -> 04  33.8 dB
 #
 # Unrelated framings sit at 10-13 dB throughout this project, so all three are
-# genuine matches rather than coincidence. Against the trimmed take that came
-# before, the entry gives up about a decibel and the exit gains nearly five —
-# and a sweep of the new head found its own best match at frame 2, worth only
-# +0.5 dB, which is inside the noise and not worth a special case.
+# genuine matches rather than coincidence.
 #
 # CRF 21 AND GOP 6 are unchanged and stay the house numbers, for the reasons
 # the landscape set established: CRF 21 measured SSIM 0,9889 against a
@@ -84,14 +109,17 @@ encode() {
 # scene now reads 0: it is the lever a re-generated take needs when its opening
 # framing lands past the previous scene's last frame, which has happened once
 # already (see the header).
+#
+# Scene 02 runs from the BRIDGED master — 125 frames, not the delivered 121.
+# See the "THE HOLE IN THE CAMERA PATH" note in the header for why.
 for spec in \
   "01:scene-01-portrait-master:0" \
-  "02:scene-02-portrait-master:0" \
+  "02:scene-02-portrait-master-bridged:0" \
   "03:scene-03-portrait-master:0" \
   "04:scene-04-portrait-master:0"
 do
   IFS=: read -r play master trim <<< "$spec"
-  dst="$OUT/scene-$play-mobile-bt709-tv-gop6.mp4"
+  dst="$OUT/scene-$play-portrait-720x1280-bt709-tv-gop6.mp4"
   encode "$M/$master.mp4" "$dst" "$trim"
   frames=$("${FF%ffmpeg*}ffprobe" -v error -select_streams v:0 \
     -show_entries stream=nb_frames -of default=nw=1:nk=1 "$dst" 2>/dev/null || echo "?")
@@ -101,9 +129,9 @@ done
 # The opening frame, so the hero never shows black while scene 01 arrives.
 # Taken from the derivative the visitor actually plays, not from the master, so
 # the poster and the first video frame are the same image.
-"$FF" -hide_banner -v error -y -i "$OUT/scene-01-mobile-bt709-tv-gop6.mp4" \
-  -frames:v 1 -update 1 "$OUT/scene-01-poster-mobile.png"
-"$FF" -hide_banner -v error -y -i "$OUT/scene-01-poster-mobile.png" \
-  -c:v libwebp -quality 82 "$OUT/scene-01-poster-mobile.webp"
-rm -f "$OUT/scene-01-poster-mobile.png"
-echo "  poster        $(stat -c%s "$OUT/scene-01-poster-mobile.webp" | awk '{printf "%.0f KB", $1/1024}')"
+"$FF" -hide_banner -v error -y -i "$OUT/scene-01-portrait-720x1280-bt709-tv-gop6.mp4" \
+  -frames:v 1 -update 1 "$OUT/scene-01-poster-portrait.png"
+"$FF" -hide_banner -v error -y -i "$OUT/scene-01-poster-portrait.png" \
+  -c:v libwebp -quality 82 "$OUT/scene-01-poster-portrait.webp"
+rm -f "$OUT/scene-01-poster-portrait.png"
+echo "  poster        $(stat -c%s "$OUT/scene-01-poster-portrait.webp" | awk '{printf "%.0f KB", $1/1024}')"

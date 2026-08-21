@@ -238,13 +238,11 @@ const reverseMediaFor = (scene: string) =>
  * The portrait set is never A/B'd against anything and has no reverse or 48 fps
  * companion, so it resolves to one path with no flags in the way.
  */
-const mobileMediaFor = (scene: string) => `/media/web/scene-${scene}-mobile-bt709-tv-gop6.mp4`;
+const mobileMediaFor = (scene: string) => `/media/web/scene-${scene}-portrait-720x1280-bt709-tv-gop6.mp4`;
 
-/** Native pixel dimensions of every file MOBILE_SEGMENTS points at. */
-export const MOBILE_SOURCE = { width: 720, height: 1280 } as const;
 
 /** Frame 0 of the portrait scene 01, so the hero never opens on black. */
-export const MOBILE_POSTER = "/media/web/scene-01-poster-mobile.webp";
+export const MOBILE_POSTER = "/media/web/scene-01-poster-portrait.webp";
 
 const mediaFor = (scene: string) =>
   useOriginalMedia
@@ -455,13 +453,20 @@ export const MOBILE_SEGMENTS: MobileSegment[] = [
     globalEnd: 10.041667,
   },
   {
+    /**
+     * 125 frames, not the 121 the generator delivered: the last four are
+     * interpolated, and they are the only synthesised footage in the film.
+     * Scene 03 opens about five frames further along the camera path than
+     * this scene ends, and no take closed it — see the "HOLE IN THE CAMERA
+     * PATH" note in tools/make-mobile.sh for the three that were tried.
+     */
     id: "s110",
     label: "Living ao Display S110",
     mobileSrc: mobileMediaFor("02"),
-    duration: 5.041667,
-    frames: 121,
+    duration: 5.208333,
+    frames: 125,
     globalStart: 10.041667,
-    globalEnd: 15.083334,
+    globalEnd: 15.25,
   },
   {
     id: "gourmet",
@@ -469,8 +474,8 @@ export const MOBILE_SEGMENTS: MobileSegment[] = [
     mobileSrc: mobileMediaFor("03"),
     duration: 8.041667,
     frames: 193,
-    globalStart: 15.083334,
-    globalEnd: 23.125001,
+    globalStart: 15.25,
+    globalEnd: 23.291667,
   },
   {
     id: "skyline",
@@ -478,17 +483,17 @@ export const MOBILE_SEGMENTS: MobileSegment[] = [
     mobileSrc: mobileMediaFor("04"),
     duration: 8.041667,
     frames: 193,
-    globalStart: 23.125001,
-    globalEnd: 31.166668,
+    globalStart: 23.291667,
+    globalEnd: 31.333334,
   },
 ];
 
-/** 748 frames: 241 + 121 + 193 + 193, nothing skipped. */
-export const MOBILE_GLOBAL_DURATION = 31.166668;
-export const MOBILE_GLOBAL_FRAMES = 748;
+/** 752 frames: 241 + 125 + 193 + 193, nothing skipped. */
+export const MOBILE_GLOBAL_DURATION = 31.333334;
+export const MOBILE_GLOBAL_FRAMES = 752;
 
 /** Frame index at which each mobile scene starts on the global timeline. */
-export const MOBILE_SEGMENT_START_FRAME = [0, 241, 362, 555];
+export const MOBILE_SEGMENT_START_FRAME = [0, 241, 366, 559];
 
 /**
  * Overlays as AUTHORED against the footage, before the intro offset.
@@ -672,8 +677,8 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     // travelling toward the gourmet area. Measured on the current take: the
     // panel is still readable through local 2.0 s and the passage has taken
     // over by local 4.0 s.
-    globalStartMobile: 16.8,
-    globalEndMobile: 19.0,
+    globalStartMobile: 17.0,
+    globalEndMobile: 19.2,
     eyebrow: "Cenas personalizadas",
     title: "Um toque muda o ambiente",
     description:
@@ -693,8 +698,8 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     // local frame 96 (4.0 s) of scene 03 — the passage shot — and stay in
     // frame through its settle on the island and across into scene 04, which
     // opens on the identical framing (32.1 dB).
-    globalStartMobile: 19.2,
-    globalEndMobile: 23.4,
+    globalStartMobile: 19.4,
+    globalEndMobile: 23.6,
     eyebrow: "Controle de iluminação",
     equipment: "Controle de iluminação",
     title: "Iluminação arquitetural",
@@ -717,8 +722,8 @@ const AUTHORED_OVERLAYS: Overlay[] = [
     // — so the window tracks the actual motion instead of the desktop
     // scene's slower reveal. Picks up where gourmet-iluminacao leaves off,
     // one beat after scene 04 begins at 23.125.
-    globalStartMobile: 23.6,
-    globalEndMobile: 25.9,
+    globalStartMobile: 23.8,
+    globalEndMobile: 26.1,
     eyebrow: "Automação de cortinas",
     equipment: "Automação de cortinas",
     title: "Cortinas automatizadas",

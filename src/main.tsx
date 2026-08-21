@@ -20,9 +20,7 @@ const path = window.location.pathname;
 let Root: ComponentType = App;
 
 if (import.meta.env.DEV) {
-  if (path.startsWith("/framing-lab")) {
-    Root = lazy(() => import("./FramingLab").then((m) => ({ default: m.FramingLab })));
-  } else if (path.startsWith("/motion-diagnostic")) {
+  if (path.startsWith("/motion-diagnostic")) {
     Root = lazy(() => import("./MotionDiagnostic").then((m) => ({ default: m.MotionDiagnostic })));
   } else if (path.startsWith("/quality-diagnostic")) {
     Root = lazy(() =>

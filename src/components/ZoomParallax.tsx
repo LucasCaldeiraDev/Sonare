@@ -92,7 +92,7 @@ const CARDS: Card[] = [
      * It fits, with roughly a percent and a half of slack each side. Cropping
      * this source any tighter around the panel would spend that slack.
      */
-    srcMobile: "/media/web/s110-zoom-portrait.webp",
+    srcMobile: "/media/web/s110-zoom-portrait-9x16.webp",
     alt: "Display inteligente S110 na parede de madeira ripada, com todas as funções da casa na tela.",
     frame: "h-screen w-screen",
     scale: 4,

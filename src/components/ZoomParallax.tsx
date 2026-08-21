@@ -68,29 +68,33 @@ const CARDS: Card[] = [
      * the other. The panel was the biggest thing on screen and still
      * unreadable, which is the worst of both.
      *
-     * The fix is a tighter crop rather than a new image, and specifically NOT
-     * a regenerated one. This asset's whole value is that the interface is the
-     * client's real bitmap composited at native 1:1 into the measured screen
-     * rectangle (see S110Section) — every label is the actual product's. An
-     * image model asked for a 9:16 version would invent the labels, which is
-     * exactly what the composite exists to prevent. So the mobile source is
-     * cut from the same master: 3109x2787 around the panel, no resampling of
-     * the UI beyond the single Lanczos reduction to 1600w, which still leaves
-     * the labels oversampled on a DPR-3 handset.
+     * The fix is a crop plus EXTENDED WALL, and specifically not a regenerated
+     * image. This asset's whole value is that the interface is the client's
+     * real bitmap composited at native 1:1 into the measured screen rectangle
+     * (see S110Section) — every label is the actual product's. An image model
+     * asked for a 9:16 version would invent the labels, which is exactly what
+     * the composite exists to prevent. So the mobile source starts as a cut
+     * from the same master, 3109x2787 around the panel, and is then outpainted
+     * vertically to 9:16: outpainting only ADDS beyond the original frame, so
+     * the panel and its interface come through untouched and what is
+     * synthesised is ceiling, cove light and more of the same vertical slats.
+     * That is the one part of this picture a model can extend safely, because
+     * it repeats.
      *
-     * The crop is 1.115:1, not 9:16, and that is deliberate. Nothing between
-     * the panel's own proportions and a phone's 0.46 can be reached by
-     * cropping a 16:9 source — the master is not tall enough to contain the
-     * full panel width in a portrait window. Going full-bleed would mean
-     * outpainting wall above and below; the slats repeat, so it is safe to do
-     * later if the drama is wanted, but it is a new asset rather than a
-     * framing fix and the panel reads without it.
+     * It went out for one round as the bare 1.115:1 crop, letterboxed rather
+     * than full-bleed. That was the honest smaller step — the whole panel was
+     * visible and nothing was invented — but on a real handset a band floating
+     * in black read as broken rather than as composed, which is what settled
+     * the question in favour of the taller asset.
+     *
+     * The margin is thin and worth writing down: at 9:16 against a 0.46 phone,
+     * cover shows the middle 82.7% of the width and the panel spans about 79%.
+     * It fits, with roughly a percent and a half of slack each side. Cropping
+     * this source any tighter around the panel would spend that slack.
      */
     srcMobile: "/media/web/s110-zoom-portrait.webp",
     alt: "Display inteligente S110 na parede de madeira ripada, com todas as funções da casa na tela.",
-    // Width-driven under `sm`, so the crop lands whole instead of being
-    // re-cropped by object-cover; full-bleed from `sm` up as before.
-    frame: "w-screen aspect-[300/269] sm:aspect-auto sm:h-screen sm:w-screen",
+    frame: "h-screen w-screen",
     scale: 4,
     from: 0.25,
   },
@@ -181,7 +185,7 @@ export function ZoomParallax() {
   if (reducedMotion) {
     return (
       <section aria-label="A casa em detalhe" className="bg-sonare-black">
-        <picture>
+        <picture className="contents">
           {CARDS[0].srcMobile && <source media={MOBILE_MAX} srcSet={CARDS[0].srcMobile} />}
           <img
             src={CARDS[0].src}
@@ -208,7 +212,7 @@ export function ZoomParallax() {
               className="absolute top-0 flex h-full w-full items-center justify-center"
             >
               <div className={`relative ${card.frame}`}>
-                <picture>
+                <picture className="contents">
                   {card.srcMobile && <source media={MOBILE_MAX} srcSet={card.srcMobile} />}
                   <img
                     src={card.src}

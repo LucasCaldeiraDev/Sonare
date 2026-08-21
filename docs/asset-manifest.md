@@ -55,7 +55,10 @@
 | Cases de clientes | Foto/video/texto | Prova social | Futuro | Adicionar posteriormente. |
 
 ## Fallbacks
-- Mobile pode usar poster, imagem estatica ou trechos curtos em vez de scroll-video pesado.
+- Mobile NAO usa fallback: recebe a mesma jornada, em conjunto proprio 9:16 nativo
+  (`scene-0N-portrait-720x1280`, 11,4 MB, quatro cenas). A recomendacao anterior
+  aqui era poster ou trechos curtos; foi descartada porque trocava o filme por um
+  resumo dele. Ver `docs/portrait-mobile-spec.md`.
 - Para reduced motion, apresentar sequencia como conteudo estatico com texto acessivel.
 - Se nao houver foto final aprovada para uma cena, usar placeholder elegante baseado em marca e marcar como pendente.
 

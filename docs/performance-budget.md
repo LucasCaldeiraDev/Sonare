@@ -37,7 +37,11 @@
 
 ## Animacao
 - Respeitar prefers-reduced-motion.
-- Evitar pin longo no mobile.
+- Pin longo no mobile e ACEITO e foi implementado: a jornada e uma secao pinada
+  de 31,3 s dirigida pelo scroll. O custo e pago com governador de toque (limita
+  a taxa de avanco ao que o decodificador sustenta) e GOP 6 (seek barato para
+  tras). A diretriz original desaconselhava; ver `docs/portrait-mobile-spec.md`
+  para o que a substituiu e por que.
 - Garantir fallback estatico.
 - Medir custo de GSAP, Motion ou qualquer biblioteca antes da implementacao.
 

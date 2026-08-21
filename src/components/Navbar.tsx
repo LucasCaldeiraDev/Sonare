@@ -110,12 +110,17 @@ export function Navbar() {
       className={`fixed inset-x-0 top-0 z-50 transition-colors duration-500 ${
         scrolled || menuOpen
           ? "border-b border-white/10 bg-sonare-ink/90 backdrop-blur-md"
-          // At the top the header sits directly on the night sky. A 60% black
-          // wash took 21% of the blue out of that sky across the full width —
-          // the stars and the skyline are the first thing the scene sells. The
-          // nav is silver-on-dark and already clears 10:1 unaided, so the
-          // scrim is cut to a quarter and the type carries its own shadow.
-          : "border-b border-transparent bg-gradient-to-b from-black/25 to-transparent [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]"
+          // At the top the header is INVISIBLE except for its own type: no
+          // background, no border, nothing.
+          //
+          // It used to carry a black-to-transparent scrim here, cut to 25%
+          // because a 60% wash took 21% of the blue out of the night sky. But
+          // any scrim over an open sky ends somewhere, and that ending is a
+          // horizontal edge running the full width of the page — read as a
+          // stray line across the hero, which is the first thing a visitor
+          // sees. Removing it costs nothing: the nav is silver-on-dark and
+          // already clears 10:1 unaided, and the type keeps its own shadow.
+          : "border-b border-transparent bg-transparent [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]"
       }`}
     >
       <nav

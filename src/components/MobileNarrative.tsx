@@ -260,8 +260,41 @@ const REFRESH_FALLBACK_HZ = 60;
 const governorParam = import.meta.env.DEV
   ? new URLSearchParams(window.location.search).get("governor")
   : null;
-const governorOff = governorParam === "off";
 const governorFraction = Number(governorParam) || GOVERNOR_FRACTION;
+
+/**
+ * iOS gets no governor, and the reason is a platform limit rather than a
+ * preference.
+ *
+ * The governor's whole method is: call preventDefault on the touch so the page
+ * does not scroll itself, then hand the scroll back with window.scrollTo at a
+ * metered rate. That second half is what WebKit will not honour. Safari drives
+ * scrolling on the compositor, and while a finger is down on a gesture the page
+ * has claimed, main-thread scroll writes are unreliable — they land late, or
+ * not until the touch ends. So the first half succeeds and the second fails,
+ * which is not a slow film: it is a page that does not move while you drag it.
+ *
+ * Every WebKit browser on iOS inherits this, Chrome and Firefox included, which
+ * is why the test is the platform and not the brand. iPadOS reports itself as
+ * a Mac, hence the touch-points check.
+ *
+ * Losing the governor there costs less than it looks. Its job is to stop a
+ * fling asking for more frames per second than the decoder can present, and two
+ * other things in this pipeline already absorb a fling on their own —
+ * ScrollTrigger's scrub damping spreads the jump over its own time constant,
+ * and past FORWARD_SEEK_GAP the scrub engine stops chasing and seeks. The film
+ * may travel faster than ideal during a violent flick. That is a quality
+ * problem, and a page that will not scroll is not.
+ *
+ * This is the same path `?governor=off` has always taken, so it is a mode that
+ * has been exercised rather than a new one invented for this.
+ */
+const isWebKitTouch =
+  typeof navigator !== "undefined" &&
+  (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+
+const governorOff = governorParam === "off" || isWebKitTouch;
 
 /**
  * The picture fills the screen, and that is the only framing there is.

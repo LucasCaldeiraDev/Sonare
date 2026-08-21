@@ -21,7 +21,6 @@ import {
   reverseFrameToForwardFrame,
 } from "../content/timeline";
 import { OverlayCard } from "./OverlayCard";
-import { SystemRail } from "./SystemRail";
 
 type CanvasNarrativeProps = {
   id?: string;
@@ -623,7 +622,6 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
   const heroRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef<HTMLDivElement>(null);
   const scrimRef = useRef<HTMLDivElement>(null);
-  const railFillRef = useRef<HTMLDivElement>(null);
   const hudRef = useRef<HTMLPreElement>(null);
 
   /** Where the scroll wants to be, in global frames. Written by ScrollTrigger. */
@@ -1433,7 +1431,7 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
       (window as unknown as Record<string, unknown>).__cnHandover = stats;
     }
 
-    // Feeds the SystemRail: one event per PRESENTED integer frame, never per
+    // One event per PRESENTED integer frame, never per
     // tick, so listeners pay nothing while the playhead is at rest.
     let lastEmittedGf = -1;
 
@@ -1449,7 +1447,7 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
       // ticker's first tick), but renderFrameRef otherwise starts at 0 and
       // has to damp its way up to it — which is exactly the mismatch a
       // reload with scroll position restored mid-journey exposes: the
-      // anchor dot and SystemRail visibly ramp through the wrong state for
+      // anchor dot visibly ramps through the wrong state for
       // a beat before the damped catch-up lands.
       if (isFirstTick) {
         renderFrameRef.current = targetFrameRef.current;
@@ -2004,9 +2002,6 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
           0,
           Math.min(GLOBAL_FRAMES - 1, (t / GLOBAL_DURATION) * (GLOBAL_FRAMES - 1)),
         );
-        if (railFillRef.current) {
-          railFillRef.current.style.transform = `scaleY(${Math.min(1, t / total)})`;
-        }
       });
 
       if (heroRef.current) {
@@ -2044,23 +2039,6 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
         );
       }
     }, section);
-
-    /**
-     * Chapter navigation from the SystemRail. The rail speaks in frames; this
-     * translates to the scroll position that produces that frame and lets the
-     * scrub pipeline do the rest, so a click travels through exactly the same
-     * path as a gesture — damping, direction logic, handovers and all.
-     */
-    const onSeek = (event: Event) => {
-      const st = journeyTrigger;
-      if (!st) return;
-      const frame = (event as CustomEvent<{ frame: number }>).detail.frame;
-      const clamped = Math.max(0, Math.min(GLOBAL_FRAMES - 1, frame));
-      const seconds = (clamped / (GLOBAL_FRAMES - 1)) * GLOBAL_DURATION;
-      const y = st.start + (seconds / total) * (st.end - st.start);
-      gsap.to(window, { scrollTo: y, duration: 1.2, ease: "power2.inOut", overwrite: "auto" });
-    };
-    window.addEventListener("sonare:seek", onSeek as EventListener);
 
     /**
      * Handover gate for the opening frame.
@@ -2217,7 +2195,6 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
         }
       }
       delete document.body.dataset.heroSource;
-      window.removeEventListener("sonare:seek", onSeek as EventListener);
       gsap.ticker.remove(tick);
       seekedHandlers.forEach((e) => e && e.v.removeEventListener("seeked", e.h));
       devListeners.forEach((e) => e && e.v.removeEventListener(e.type, e.h));
@@ -2343,7 +2320,6 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
         </div>
       )}
 
-      <SystemRail fillRef={railFillRef} />
     </section>
   );
 }

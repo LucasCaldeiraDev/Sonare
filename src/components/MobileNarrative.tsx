@@ -9,11 +9,9 @@ import {
   MOBILE_SCROLL_VH_PER_SECOND,
   MOBILE_SEGMENT_START_FRAME,
   MOBILE_SEGMENTS,
-  OVERLAYS,
 } from "../content/timeline";
 import { REFRESH_JOURNEY } from "../lib/scrollOrder";
 import { createScrubEngine, FORWARD_SEEK_GAP, type ScrubEngine } from "../lib/scrubEngine";
-import { OverlayCard } from "./OverlayCard";
 
 /**
  * The journey on a phone: one pinned frame, the scroll driving global time.
@@ -81,6 +79,16 @@ type Props = {
  * animation frame, which is the whole budget there is.
  */
 const SCRUB = 0.5;
+
+/**
+ * `?diag=1` shows a live readout over the film. Deliberately NOT gated on
+ * DEV: the only place this defect appears is a real handset loading the real
+ * deployed build, so a diagnostic that is compiled out of production cannot
+ * see it. It renders nothing unless the flag is present.
+ */
+const diagOn =
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("diag") === "1";
 
 /**
  * How close the incoming track must be to the boundary frame before the swap.
@@ -315,10 +323,10 @@ const COPY_BOX = "absolute inset-x-0 top-0 z-30 h-[100svh]";
 export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
-  const overlayRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const heroRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef<HTMLDivElement>(null);
   const scrimRef = useRef<HTMLDivElement>(null);
+  const diagRef = useRef<HTMLPreElement>(null);
 
   /** Where the scroll wants to be, in global logical frames. Written by ScrollTrigger. */
   const targetFrameRef = useRef(0);
@@ -615,6 +623,40 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
 
     gsap.ticker.add(drive);
 
+    /**
+     * Diagnostic sampling at 4 Hz — off the per-frame path on purpose, so
+     * looking at the readout cannot itself change what is being measured.
+     */
+    let diagTimer = 0;
+    if (diagOn) {
+      const sample = () => {
+        const el = diagRef.current;
+        if (!el) return;
+        const t = targetFrameRef.current;
+        const { index, local } = locate(Math.floor(t));
+        const lines: string[] = [];
+        lines.push(`scroll ${Math.round(window.scrollY)}  alvo f${t.toFixed(1)}/${MOBILE_GLOBAL_FRAMES - 1}`);
+        lines.push(`cena ${index + 1} local f${local}  ativa ${active + 1}  gov ${governorOff ? "off" : "on"}`);
+        lines.push(`pin ${journeyActive ? "sim" : "nao"}  backlog ${Math.round(backlog)}`);
+        videoRefs.current.forEach((v, i) => {
+          if (!v) return;
+          const e = engines[i];
+          const err = v.error ? `ERRO${v.error.code}` : "-";
+          const st = e?.stats();
+          lines.push(
+            `v${i + 1} rs${v.readyState} ns${v.networkState} t${v.currentTime.toFixed(2)} ` +
+              `${v.paused ? "pause" : "play"} r${v.playbackRate.toFixed(2)} ${e?.mode() ?? "-"} ` +
+              `rej${st?.playRejects ?? 0} sk${st?.seeksCompleted ?? 0}/${st?.avgSeekMs ?? 0}ms ${err}`,
+          );
+        });
+        const anyRej = engines.find((e) => (e?.stats().playRejects ?? 0) > 0);
+        if (anyRej) lines.push(`ULTIMO ERRO DE PLAY: ${anyRej.stats().lastPlayError}`);
+        el.textContent = lines.join(String.fromCharCode(10));
+      };
+      sample();
+      diagTimer = window.setInterval(sample, 250);
+    }
+
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         defaults: { ease: "none" },
@@ -677,30 +719,6 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         tl.set(heroRef.current, { pointerEvents: "none" }, 1.4);
       }
 
-      // Same copy and easing as desktop, but mobile's four scenes run at
-      // different durations and cut points (see MOBILE_SEGMENTS), so a
-      // caption whose equipment moved to a different moment carries its own
-      // globalStartMobile/globalEndMobile — falling back to desktop's timing
-      // for the ones that did not need to move.
-      OVERLAYS.forEach((o) => {
-        const el = overlayRefs.current[o.id];
-        if (!el) return;
-        const position = o.positionMobile ?? o.position;
-        const rise = position.startsWith("top") ? -18 : 22;
-        const start = o.globalStartMobile ?? o.globalStart;
-        const end = o.globalEndMobile ?? o.globalEnd;
-        tl.fromTo(
-          el,
-          { opacity: 0, y: rise },
-          { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" },
-          start,
-        );
-        tl.to(
-          el,
-          { opacity: 0, y: -rise * 0.6, duration: 0.38, ease: "power1.in" },
-          Math.max(end - 0.38, start + 0.55),
-        );
-      });
 
       if (closing && closingRef.current) {
         if (scrimRef.current) {
@@ -727,6 +745,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
     const settleTimer = window.setTimeout(() => ScrollTrigger.refresh(), 250);
 
     return () => {
+      if (diagTimer) window.clearInterval(diagTimer);
       window.clearTimeout(settleTimer);
       gsap.ticker.remove(drive);
       gsap.ticker.remove(measureRefresh);
@@ -817,17 +836,6 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           </div>
         )}
 
-        {OVERLAYS.map((o) => (
-          <OverlayCard
-            key={o.id}
-            overlay={{ ...o, position: o.positionMobile ?? o.position }}
-            compact
-            style={{ opacity: 0 }}
-            refCallback={(el) => {
-              overlayRefs.current[o.id] = el;
-            }}
-          />
-        ))}
 
         {closing && (
           <div
@@ -838,6 +846,12 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           </div>
         )}
       </div>
+      {diagOn && (
+        <pre
+          ref={diagRef}
+          className="pointer-events-none fixed left-0 top-0 z-[60] m-0 max-w-full whitespace-pre-wrap bg-black/80 p-1.5 font-mono text-[9px] leading-[1.35] text-lime-300"
+        />
+      )}
     </section>
   );
 }

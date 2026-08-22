@@ -93,6 +93,16 @@ export type ScrubStats = {
   avgSeekMs: number;
   presentedFrames: number;
   playingMs: number;
+  /**
+   * Times play() was refused. Swallowed silently before, which is exactly the
+   * failure that leaves a picture frozen while the scroll keeps working: this
+   * engine advances by PLAYING and only falls back to seeking past
+   * FORWARD_SEEK_GAP, so a platform that refuses play() reads as a stall
+   * rather than as an error.
+   */
+  playRejects: number;
+  /** Last refusal's name, e.g. NotAllowedError. */
+  lastPlayError: string;
 };
 
 export type ScrubEngine = {
@@ -112,6 +122,8 @@ export type ScrubEngine = {
   currentTime: () => number;
   /** True only while the playhead is being moved by seeks (reverse / big jump). */
   isSeekDriven: () => boolean;
+  /** Current drive mode, for diagnostics. */
+  mode: () => "idle" | "play" | "seek";
   /** Smoothed target velocity, in footage-seconds per wall-second. */
   velocity: () => number;
   /**
@@ -285,7 +297,12 @@ function tick() {
     if (Math.abs(v.playbackRate - rate) > 0.02) v.playbackRate = rate;
     if (v.paused) {
       const p = v.play();
-      if (p && typeof p.catch === "function") p.catch(() => {});
+      if (p && typeof p.catch === "function") {
+        p.catch((err: unknown) => {
+          s.stats.playRejects += 1;
+          s.stats.lastPlayError = (err as Error)?.name || String(err);
+        });
+      }
     }
   }
 }
@@ -319,6 +336,8 @@ export function createScrubEngine(
       avgSeekMs: 0,
       presentedFrames: 0,
       playingMs: 0,
+      playRejects: 0,
+      lastPlayError: "",
     },
   };
 
@@ -363,6 +382,7 @@ export function createScrubEngine(
       state.stats.seeksCompleted >= STRUGGLE_MIN_SEEKS && state.stats.avgSeekMs > STRUGGLE_AVG_MS,
     currentTime: () => state.video.currentTime,
     isSeekDriven: () => state.mode === "seek",
+    mode: () => state.mode,
     velocity: () => state.velocity,
     seedVelocity: (v: number) => {
       state.velocity = v;

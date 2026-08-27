@@ -172,6 +172,17 @@ type EngineState = {
   mode: "idle" | "play" | "seek";
   /** Ceiling on playbackRate — see DEFAULT_MAX_RATE. */
   rateCeiling: () => number;
+  /** True while a play() Promise is in flight and not yet settled. */
+  playPending: boolean;
+  /** A pause was requested while play() was pending; apply it once play() settles. */
+  pauseQueued: boolean;
+  /**
+   * Set once play() has been refused with NotAllowedError — the platform is
+   * withholding the permission outright, so retrying play() every tick would
+   * just repeat the refusal. From here the engine drives forward entirely by
+   * seeking, which needs no permission. See requestPlay.
+   */
+  playBlocked: boolean;
 };
 
 export type ScrubOptions = {
@@ -205,6 +216,51 @@ function leadTarget(s: EngineState) {
   const lead = s.velocity * latency;
   // Cap the lead so a violent flick cannot overshoot into unrelated footage.
   return s.target + clamp(lead, -1.2, 1.2);
+}
+
+/**
+ * Pause, but never while a play() Promise is still in flight — calling
+ * pause() on a pending play() is what produces WebKit's AbortError ("the
+ * play() request was interrupted by a call to pause()"), and on iOS this
+ * engine's own pause/play cycling was tripping that on nearly every tick.
+ * Queue the pause and apply it once play() settles instead.
+ */
+function requestPause(s: EngineState) {
+  if (s.playPending) {
+    s.pauseQueued = true;
+    return;
+  }
+  if (!s.video.paused) s.video.pause();
+}
+
+/** Play, guarding against overlapping play() calls and recording refusals. */
+function requestPlay(s: EngineState) {
+  if (s.playPending) return;
+  s.playPending = true;
+  const p = s.video.play();
+  if (p && typeof p.catch === "function") {
+    p.then(() => {
+      s.playPending = false;
+      if (s.pauseQueued) {
+        s.pauseQueued = false;
+        if (!s.video.paused) s.video.pause();
+      }
+    }).catch((err: unknown) => {
+      s.playPending = false;
+      s.pauseQueued = false;
+      s.stats.playRejects += 1;
+      const name = (err as Error)?.name || String(err);
+      s.stats.lastPlayError = name;
+      // NotAllowedError is the platform withholding permission outright — fall
+      // back to seek-driven advance so the picture keeps moving. AbortError
+      // just means a pause() interrupted this same play(), which the queued
+      // pause above already exists to prevent going forward; it clears on its
+      // own and is not a permission problem.
+      if (name === "NotAllowedError") s.playBlocked = true;
+    });
+  } else {
+    s.playPending = false;
+  }
 }
 
 function issueSeek(s: EngineState, to: number) {
@@ -248,7 +304,7 @@ function tick() {
     // lead past the leash — or a story actually running backwards, where
     // waiting would never converge — is worth the seek. See LEAD_MAX_FRAMES.
     if (delta < 0 && advancing && -delta <= LEAD_MAX_FRAMES * FRAME) {
-      if (!v.paused) v.pause();
+      requestPause(s);
       s.mode = "idle";
       continue;
     }
@@ -257,7 +313,7 @@ function tick() {
     // the floors below deliberately keep playing through a gap this small,
     // which is what stops the pause/play cycling at low speed.
     if (abs < EPSILON && !advancing) {
-      if (!v.paused) v.pause();
+      requestPause(s);
       s.mode = "idle";
       continue;
     }
@@ -266,15 +322,19 @@ function tick() {
     // is the one case that must seek. Single in-flight, frame-quantized, aimed
     // ahead of the scroll by one seek-latency.
     if (delta < 0) {
-      if (!v.paused) v.pause();
+      requestPause(s);
       s.mode = "seek";
       issueSeek(s, leadTarget(s));
       continue;
     }
 
-    // Forward, but too far to catch up by playing — jump.
-    if (delta > FORWARD_SEEK_GAP) {
-      if (!v.paused) v.pause();
+    // Forward, but too far to catch up by playing — jump. Also the fallback
+    // path once play() has been refused outright (playBlocked): with no
+    // permission to play, seeking is the only way left to advance, so treat
+    // every forward gap as "too far" rather than waiting for FORWARD_SEEK_GAP
+    // and reading as a freeze in the meantime.
+    if (delta > FORWARD_SEEK_GAP || s.playBlocked) {
+      requestPause(s);
       s.mode = "seek";
       issueSeek(s, leadTarget(s));
       continue;
@@ -295,15 +355,7 @@ function tick() {
     const feedForward = advancing ? s.velocity : 0;
     const rate = clamp(feedForward + delta / RATE_TIME_CONSTANT, floor, s.rateCeiling());
     if (Math.abs(v.playbackRate - rate) > 0.02) v.playbackRate = rate;
-    if (v.paused) {
-      const p = v.play();
-      if (p && typeof p.catch === "function") {
-        p.catch((err: unknown) => {
-          s.stats.playRejects += 1;
-          s.stats.lastPlayError = (err as Error)?.name || String(err);
-        });
-      }
-    }
+    if (v.paused) requestPlay(s);
   }
 }
 
@@ -327,6 +379,9 @@ export function createScrubEngine(
     lastTargetAt: 0,
     mode: "idle",
     rateCeiling,
+    playPending: false,
+    pauseQueued: false,
+    playBlocked: false,
     stats: {
       seekRequests: 0,
       seeksCompleted: 0,
@@ -397,6 +452,11 @@ export function createScrubEngine(
       state.video = el;
       state.seeking = false;
       state.queued = null;
+      // A play()/pause() in flight on the outgoing element must not act on the
+      // element it hands over to once its promise settles.
+      state.playPending = false;
+      state.pauseQueued = false;
+      state.playBlocked = false;
       boundVideo = el;
       el.addEventListener("seeked", onSeeked);
       if (Math.abs(el.currentTime - at) > EPSILON) {

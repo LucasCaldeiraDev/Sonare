@@ -52,6 +52,28 @@ import { createScrubEngine, FORWARD_SEEK_GAP, type ScrubEngine } from "../lib/sc
  * loaded video paints that frame without ever calling play(), so a phone in Low
  * Power Mode — where the old per-scene mode showed nothing but its own black
  * background — still gets the whole film here.
+ *
+ * "LOADED" IS THE WORD DOING THE WORK IN THAT SENTENCE, and iOS is where it
+ * was found not to hold. WebKit on a handset makes two decisions this page
+ * never gets a say in: whether `preload` is honoured at all (it is capped at
+ * metadata whenever Safari has decided not to preload, typically on cellular,
+ * and can be refused outright), and whether play() is permitted (not in Low
+ * Power Mode). A track can therefore sit at HAVE_METADATA — file known, no
+ * frame decoded — or at HAVE_NOTHING indefinitely, and until it moves the
+ * handover gate below has nothing to show. That was the whole symptom on an
+ * iPhone: scene 01's poster, then nothing, "the scenes do not load". Three
+ * things in the pipeline answer it, each for one state:
+ *
+ *   HAVE_METADATA     the scrub engine seeks to the target frame instead of
+ *                     waiting for readyState to climb by itself — a seek is
+ *                     the one request WebKit answers by preparing the pipeline
+ *                     it declined to prepare for preload.
+ *   HAVE_NOTHING +    `warm` primes the track through the engine: play() with
+ *   NETWORK_IDLE      a pause queued behind it, since play() is the only call
+ *                     that makes a WebKit that has refused to preload fetch.
+ *   refused play()    the engine retries every couple of seconds rather than
+ *                     giving up for the visit — the refusal lifts with Low
+ *                     Power Mode or the first real touch on the page.
  */
 
 type Props = {
@@ -436,7 +458,15 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
     observer?.disable();
 
     videoRefs.current.forEach((el, i) => {
-      if (el) el.style.opacity = i === 0 ? "1" : "0";
+      if (!el) return;
+      el.style.opacity = i === 0 ? "1" : "0";
+      // React writes `muted` as a property and never as the attribute. The
+      // property is what WebKit's autoplay policy reads at play() time, so
+      // this is belt and braces — but `defaultMuted` is the attribute, and
+      // an element that ever reloads (see `warm`) comes back with its
+      // attributes, not with whatever a property once said.
+      el.muted = true;
+      el.defaultMuted = true;
     });
 
     /** Global logical frame -> which segment holds it, and where inside it. */
@@ -455,14 +485,56 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       return { index, local };
     };
 
-    /** Bring a track's data in without disturbing whatever it is already doing. */
+    /**
+     * How long a track that reports a media error is left alone before it is
+     * reloaded. Long enough that a file which genuinely cannot be fetched
+     * does not hammer the server sixty times a second; short enough that a
+     * track iOS unloaded under memory pressure is back well inside the
+     * PRELOAD_LEAD_FRAMES head start.
+     */
+    const RELOAD_INTERVAL_MS = 3000;
+    const lastReloadAt: number[] = MOBILE_SEGMENTS.map(() => 0);
+
+    /**
+     * Bring a track's data in without disturbing whatever it is already doing.
+     *
+     * Called every tick for the active track and, inside the lead, for the
+     * next one — so everything past the first branch has to be cheap and
+     * idempotent. The states it answers, in the order a track passes through
+     * them:
+     *
+     *   preload still "none"     promote it and nudge. Chrome starts fetching
+     *                            on the attribute alone; Safari wants load(),
+     *                            and it is only safe while the element holds
+     *                            no frames to throw away.
+     *   HAVE_NOTHING + IDLE      asked, and refused: the agent looked at the
+     *                            promoted preload and decided to fetch nothing.
+     *                            Only a WebKit that will not preload does this,
+     *                            and only play() moves it — see engine.prime.
+     *   a media error            the element is dead until load() is called
+     *                            again. iOS reaches this by unloading a hidden
+     *                            track under memory pressure; a decode error
+     *                            reaches it too. Either way a reload is the
+     *                            only way back, rate-limited above.
+     *   HAVE_METADATA            the scrub engine's business, not this one's:
+     *                            it seeks the frame out — see scrubEngine.
+     */
     const warm = (i: number) => {
       const el = videoRefs.current[i];
-      if (!el || el.preload === "auto") return;
-      el.preload = "auto";
-      // Chrome starts fetching on the attribute alone; Safari wants the nudge,
-      // and it is only safe while the element holds no frames to throw away.
-      if (el.readyState === 0) el.load();
+      if (!el) return;
+      if (el.preload !== "auto") {
+        el.preload = "auto";
+        if (el.readyState === 0) el.load();
+        return;
+      }
+      if (el.error) {
+        const now = performance.now();
+        if (now - lastReloadAt[i] < RELOAD_INTERVAL_MS) return;
+        lastReloadAt[i] = now;
+        el.load();
+        return;
+      }
+      if (el.readyState === 0 && el.networkState === 1) engines[i]?.prime();
     };
 
     /**
@@ -643,10 +715,21 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           const e = engines[i];
           const err = v.error ? `ERRO${v.error.code}` : "-";
           const st = e?.stats();
+          // How much of the file has arrived, in seconds of footage past the
+          // playhead — the number that separates "iOS will not fetch" from
+          // "the network has not delivered yet".
+          let buffered = "-";
+          for (let r = 0; r < v.buffered.length; r++) {
+            if (v.currentTime >= v.buffered.start(r) && v.currentTime <= v.buffered.end(r)) {
+              buffered = (v.buffered.end(r) - v.currentTime).toFixed(1) + "s";
+              break;
+            }
+          }
           lines.push(
-            `v${i + 1} rs${v.readyState} ns${v.networkState} t${v.currentTime.toFixed(2)} ` +
-              `${v.paused ? "pause" : "play"} r${v.playbackRate.toFixed(2)} ${e?.mode() ?? "-"} ` +
-              `rej${st?.playRejects ?? 0} sk${st?.seeksCompleted ?? 0}/${st?.avgSeekMs ?? 0}ms ${err}`,
+            `v${i + 1} rs${v.readyState} ns${v.networkState} pre${v.preload.charAt(0)} buf${buffered} ` +
+              `t${v.currentTime.toFixed(2)} ${v.paused ? "pause" : "play"} r${v.playbackRate.toFixed(2)} ` +
+              `${e?.mode() ?? "-"} rej${st?.playRejects ?? 0} pr${st?.primes ?? 0} ` +
+              `sk${st?.seeksCompleted ?? 0}/${st?.avgSeekMs ?? 0}ms to${st?.seekTimeouts ?? 0} ${err}`,
           );
         });
         const anyRej = engines.find((e) => (e?.stats().playRejects ?? 0) > 0);

@@ -84,6 +84,47 @@ const LEAD_MAX_FRAMES = 12;
 /** A seek slower than this counts against the health score used for tier fallback. */
 const SLOW_SEEK_MS = 220;
 
+/**
+ * How long a seek may stay in flight before the engine stops waiting for its
+ * `seeked` and lets itself issue another.
+ *
+ * The engine keeps exactly one seek in flight and trusts the element to report
+ * its end. Two things on a phone break that trust: a `load()` (memory
+ * pressure, an error recovery) aborts the pending seek without a `seeked`, and
+ * WebKit occasionally swallows a seek issued while the media pipeline is still
+ * being set up. Either way `seeking` stays true forever and every later target
+ * is parked in `queued` with nothing left to drain it — the picture is frozen
+ * and nothing in the readout says why. Three seconds is well past any seek a
+ * 720p GOP-6 file takes even over a poor cellular link, so the watchdog only
+ * ever fires on a seek that was genuinely lost.
+ */
+const SEEK_WATCHDOG_MS = 3000;
+
+/**
+ * After play() is refused with NotAllowedError, how long the engine drives by
+ * seeking alone before it asks again.
+ *
+ * The refusal is not permanent state on iOS: Low Power Mode can be switched
+ * off, and WebKit lifts its gesture requirement for muted inline video after
+ * the first real touch on the page. A block that never expired left the film
+ * seek-driven for the whole visit over a condition that had long since
+ * cleared; retrying every couple of seconds costs one rejected promise while
+ * the refusal stands and recovers the play path within seconds once it lifts.
+ */
+const PLAY_RETRY_MS = 2000;
+
+/**
+ * Minimum spacing between "give me a frame" seeks issued at HAVE_METADATA.
+ *
+ * A seek issued before the data for that position has arrived completes with
+ * the element still at HAVE_METADATA — the spec only promises that `seeked`
+ * fires once the agent knows whether the data is available, not that it is.
+ * Re-issuing on the very next tick would restart the fetch it is waiting on.
+ * Half a second lets a fetch on a slow link get somewhere before it is asked
+ * again.
+ */
+const PRIME_SEEK_INTERVAL_MS = 500;
+
 export type ScrubStats = {
   seekRequests: number;
   seeksCompleted: number;
@@ -103,6 +144,10 @@ export type ScrubStats = {
   playRejects: number;
   /** Last refusal's name, e.g. NotAllowedError. */
   lastPlayError: string;
+  /** Seeks the watchdog gave up waiting for — see SEEK_WATCHDOG_MS. */
+  seekTimeouts: number;
+  /** Times prime() actually asked the element to fetch — see prime. */
+  primes: number;
 };
 
 export type ScrubEngine = {
@@ -137,6 +182,24 @@ export type ScrubEngine = {
    * speed the last one was running.
    */
   seedVelocity: (v: number) => void;
+  /**
+   * Make an element that has declined to fetch anything start fetching.
+   *
+   * The engine can only steer an element that holds metadata: a seek needs a
+   * duration to be clamped against and a frame table to land on, so at
+   * HAVE_NOTHING the ticker has nothing to act on and skips. Normally the
+   * element gets there on its own from `preload`. iOS is the exception — a
+   * WebKit that has decided not to preload (no `mediaDataLoadsAutomatically`,
+   * typically on cellular) honours neither `preload="auto"` nor `load()`, and
+   * the element sits at HAVE_NOTHING / NETWORK_IDLE indefinitely. The one call
+   * WebKit always answers with a fetch is play(), so that is what this does:
+   * play, with a pause queued behind it so the element loads and paints its
+   * first frame without ever running. Rate-limited by PLAY_RETRY_MS so a
+   * refusal (Low Power Mode) costs one rejected promise every couple of
+   * seconds rather than one per tick. Cheap to call every tick; the caller
+   * decides WHEN an element deserves its bytes, this only decides HOW to ask.
+   */
+  prime: () => void;
   stats: () => ScrubStats;
   destroy: () => void;
 };
@@ -177,12 +240,17 @@ type EngineState = {
   /** A pause was requested while play() was pending; apply it once play() settles. */
   pauseQueued: boolean;
   /**
-   * Set once play() has been refused with NotAllowedError — the platform is
-   * withholding the permission outright, so retrying play() every tick would
-   * just repeat the refusal. From here the engine drives forward entirely by
-   * seeking, which needs no permission. See requestPlay.
+   * Until this timestamp, play() is not attempted: it was refused with
+   * NotAllowedError — the platform withholding the permission outright — and
+   * retrying every tick would just repeat the refusal. Until it expires the
+   * engine drives forward entirely by seeking, which needs no permission; then
+   * it asks once more. See requestPlay and PLAY_RETRY_MS.
    */
-  playBlocked: boolean;
+  playBlockedUntil: number;
+  /** When the last seek completed — spaces the HAVE_METADATA priming seeks. */
+  lastSeekEndedAt: number;
+  /** When prime() last asked — rate-limits it to PLAY_RETRY_MS. */
+  lastPrimeAt: number;
 };
 
 export type ScrubOptions = {
@@ -252,25 +320,50 @@ function requestPlay(s: EngineState) {
       const name = (err as Error)?.name || String(err);
       s.stats.lastPlayError = name;
       // NotAllowedError is the platform withholding permission outright — fall
-      // back to seek-driven advance so the picture keeps moving. AbortError
-      // just means a pause() interrupted this same play(), which the queued
-      // pause above already exists to prevent going forward; it clears on its
-      // own and is not a permission problem.
-      if (name === "NotAllowedError") s.playBlocked = true;
+      // back to seek-driven advance so the picture keeps moving, and ask again
+      // after PLAY_RETRY_MS in case the condition has lifted. AbortError just
+      // means a pause() or load() interrupted this same play(), which the
+      // queued pause above already exists to prevent going forward; it clears
+      // on its own and is not a permission problem.
+      if (name === "NotAllowedError") s.playBlockedUntil = performance.now() + PLAY_RETRY_MS;
     });
   } else {
     s.playPending = false;
   }
 }
 
-function issueSeek(s: EngineState, to: number) {
+/**
+ * Ask the element to fetch and paint a frame without running the story: a
+ * play() with a pause queued behind it, rate-limited to PLAY_RETRY_MS. See the
+ * `prime` entry on ScrubEngine for why this is the request to make.
+ */
+function primeElement(s: EngineState) {
+  const now = performance.now();
+  if (s.playPending || now < s.playBlockedUntil) return;
+  if (now - s.lastPrimeAt < PLAY_RETRY_MS) return;
+  s.lastPrimeAt = now;
+  s.stats.primes += 1;
+  requestPlay(s);
+  // Queued behind the pending play(), so it lands the moment the element is
+  // actually playing: enough to have fetched and painted a frame, not enough
+  // to have moved the story.
+  requestPause(s);
+}
+
+/**
+ * `force` skips the "already there" check. It exists for the HAVE_METADATA
+ * priming seek, where currentTime may well equal the target and still no
+ * frame has been decoded: the seek is the request for the frame, not a
+ * correction to the playhead.
+ */
+function issueSeek(s: EngineState, to: number, force = false) {
   const target = clamp(quantize(to), 0, Math.max(0, s.duration - FRAME));
   if (s.seeking) {
     // Never build a queue: the newest target simply replaces the previous one.
     s.queued = target;
     return;
   }
-  if (Math.abs(s.video.currentTime - target) < EPSILON) return;
+  if (!force && Math.abs(s.video.currentTime - target) < EPSILON) return;
   s.seeking = true;
   s.seekStartedAt = performance.now();
   s.stats.seekRequests += 1;
@@ -287,9 +380,49 @@ function issueSeek(s: EngineState, to: number) {
  * page has exactly one requestAnimationFrame loop.
  */
 function tick() {
+  const now = performance.now();
   for (const s of engines) {
     const v = s.video;
-    if (!s.active || v.readyState < 2) continue;
+    if (!s.active) continue;
+
+    // HAVE_NOTHING: no duration, no frame table, nothing a seek can address.
+    // Only the element's own loading — or a prime() from the caller — can
+    // move it from here.
+    if (v.readyState < 1) continue;
+
+    // A seek that never came back. Release it so the engine can act again
+    // rather than parking every later target behind a `seeked` that is not
+    // coming. See SEEK_WATCHDOG_MS.
+    if (s.seeking && now - s.seekStartedAt > SEEK_WATCHDOG_MS) {
+      s.seeking = false;
+      s.queued = null;
+      s.stats.seekTimeouts += 1;
+    }
+
+    // HAVE_METADATA: the element knows the file but has decoded nothing, and
+    // it will not decode anything on its own.
+    //
+    // This used to be `readyState < 2 → skip`, on the assumption that an
+    // element with preload="auto" always climbs past 2 by itself. iOS breaks
+    // the assumption two ways: WebKit caps preload at metadata whenever it has
+    // decided not to preload (cellular, typically), and Low Power Mode refuses
+    // play(). Under either the element parks here, the old gate never opened,
+    // and the film was a poster that scrolled — every scene "failed to load".
+    // Both paths still honour a seek, which WebKit answers by preparing the
+    // pipeline it declined to prepare for preload and decoding the frame. So
+    // ask for the target frame, then wait for it. `seeked` lifts readyState
+    // to 2 and the ordinary branches below take over.
+    if (v.readyState < 2) {
+      if (!s.seeking && now - s.lastSeekEndedAt > PRIME_SEEK_INTERVAL_MS) {
+        s.mode = "seek";
+        issueSeek(s, s.target, true);
+      }
+      // A priming seek the watchdog had to abandon means this agent is not
+      // going to decode on a seek alone. play() is the other request WebKit
+      // always answers with a fetch; ask that way too, at its own rate limit.
+      if (s.stats.seekTimeouts > 0) primeElement(s);
+      continue;
+    }
 
     const delta = s.target - v.currentTime;
     const abs = Math.abs(delta);
@@ -329,11 +462,11 @@ function tick() {
     }
 
     // Forward, but too far to catch up by playing — jump. Also the fallback
-    // path once play() has been refused outright (playBlocked): with no
-    // permission to play, seeking is the only way left to advance, so treat
-    // every forward gap as "too far" rather than waiting for FORWARD_SEEK_GAP
-    // and reading as a freeze in the meantime.
-    if (delta > FORWARD_SEEK_GAP || s.playBlocked) {
+    // path while play() stands refused (playBlockedUntil): with no permission
+    // to play, seeking is the only way left to advance, so treat every forward
+    // gap as "too far" rather than waiting for FORWARD_SEEK_GAP and reading as
+    // a freeze in the meantime.
+    if (delta > FORWARD_SEEK_GAP || now < s.playBlockedUntil) {
       requestPause(s);
       s.mode = "seek";
       issueSeek(s, leadTarget(s));
@@ -381,7 +514,9 @@ export function createScrubEngine(
     rateCeiling,
     playPending: false,
     pauseQueued: false,
-    playBlocked: false,
+    playBlockedUntil: 0,
+    lastSeekEndedAt: 0,
+    lastPrimeAt: 0,
     stats: {
       seekRequests: 0,
       seeksCompleted: 0,
@@ -393,6 +528,8 @@ export function createScrubEngine(
       playingMs: 0,
       playRejects: 0,
       lastPlayError: "",
+      seekTimeouts: 0,
+      primes: 0,
     },
   };
 
@@ -401,6 +538,7 @@ export function createScrubEngine(
   const onSeeked = () => {
     const ms = performance.now() - state.seekStartedAt;
     state.seeking = false;
+    state.lastSeekEndedAt = performance.now();
     state.stats.seeksCompleted += 1;
     state.stats.lastSeekMs = Math.round(ms);
     state.seekTotalMs += ms;
@@ -456,7 +594,9 @@ export function createScrubEngine(
       // element it hands over to once its promise settles.
       state.playPending = false;
       state.pauseQueued = false;
-      state.playBlocked = false;
+      state.playBlockedUntil = 0;
+      state.lastSeekEndedAt = 0;
+      state.lastPrimeAt = 0;
       boundVideo = el;
       el.addEventListener("seeked", onSeeked);
       if (Math.abs(el.currentTime - at) > EPSILON) {
@@ -486,6 +626,7 @@ export function createScrubEngine(
       state.target = next;
     },
     isReady: () => video.readyState >= 3,
+    prime: () => primeElement(state),
     stats: () => ({ ...state.stats }),
     destroy: () => {
       state.active = false;

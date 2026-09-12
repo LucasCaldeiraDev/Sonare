@@ -163,10 +163,54 @@ cenas, o `lvh`/`svh`, a ordem de remedição dos ScrollTriggers. Nada disso depe
 do enquadramento do material. Ver `src/components/MobileNarrative.tsx` para o
 governador e `src/lib/scrubEngine.ts` para a direção de taxa.
 
-## Não verificado
+## iOS: os três estados em que "as cenas não carregam"
 
-O comportamento **rodando** — governador, scrub, dissolve, handover — foi medido
-e simulado, nunca exercitado com toque real: o painel de navegador do ambiente
-de desenvolvimento reporta a aba como `hidden` e rAF fica em zero. Testar em
-aparelho, com atenção a: rolagem para cima (caminho de seek, o mais caro), a
-emenda 03 → 04, e `?governor=0.7` se pular frames.
+No iPhone o relato foi que as cenas não carregavam — a rolagem funcionava, o
+quadro não. Não era codec: os quatro arquivos são H.264 High 4.0, yuv420p,
+`faststart`, tudo que o iOS exige. Era o motor de scrub esperando um estado que
+o WebKit móvel não entrega sozinho. O motor só agia com `readyState >= 2` (um
+frame decodificado), assumindo que `preload="auto"` chega lá por conta própria.
+No iOS o WebKit decide três coisas por cima da página, e cada uma parava o
+filme num estado diferente:
+
+| estado | quando o iOS faz isso | quem resolve |
+|---|---|---|
+| `HAVE_METADATA` (rs1): arquivo conhecido, nada decodificado | `preload` rebaixado para `metadata` quando o Safari decidiu não pré-carregar (rede celular, tipicamente) | o motor faz um seek para o frame-alvo — o seek é o pedido que o WebKit responde preparando o pipeline que se recusou a preparar para o `preload` |
+| `HAVE_NOTHING` + `NETWORK_IDLE` (rs0/ns1): nem metadata | `preload` recusado de vez | `warm` chama `engine.prime()`: `play()` com `pause()` enfileirado atrás — `play()` é a única chamada que faz esse WebKit buscar |
+| `play()` recusado (`NotAllowedError`) | Modo de Baixo Consumo | o motor avança por seek e tenta `play()` de novo a cada 2 s; a recusa cai junto com o modo, ou no primeiro toque real |
+
+Mais dois guardas: um watchdog solta seeks que nunca voltam (`load()` no meio
+de um seek, ou um seek engolido — 3 s), e `warm` recarrega uma faixa que
+reporta `error`, porque o iOS descarrega faixas ocultas sob pressão de memória.
+A razão de cada número está nos comentários de `src/lib/scrubEngine.ts` e
+`src/components/MobileNarrative.tsx`.
+
+**Como ler o aparelho.** Abrir a build com `?diag=1`. Por faixa: `rs` é o
+readyState, `ns` o networkState, `pre` o preload efetivo, `buf` quantos segundos
+já chegaram além do playhead, `rej` quantas vezes `play()` foi recusado, `pr`
+quantos primes foram feitos, `to` quantos seeks o watchdog abandonou, `ERRO<n>`
+o código de erro do elemento. Uma faixa parada em `rs1` com `buf-` e `sk`
+subindo é a rede; parada em `rs0 ns1` com `pr` subindo é o iOS recusando buscar
+mesmo com `play()`; `rej` alto sem `ERRO` é só o Modo de Baixo Consumo, e o
+filme deve andar por seek.
+
+**A hospedagem precisa responder `206 Partial Content` a `Range`.** O iOS não
+toca vídeo sem isso. Netlify (dona do `_headers`) responde; conferir na URL
+final com `curl -sI -H "Range: bytes=0-1023" <url do mp4>`.
+
+## Verificação sem aparelho
+
+O painel de navegador do ambiente de desenvolvimento não dispara
+`requestAnimationFrame` — o ticker do GSAP não roda nele e o filme não pode ser
+exercitado ali. `tools/mobile-scrub-test.mjs` roda a jornada em Chromium e
+WebKit headless via Playwright (rAF a taxa cheia), rolando o pin inteiro e
+voltando até a cena 02, com as três políticas do iOS acima emuladas do lado da
+página como cenários (`lpm`, `metadata`, `idle`). Em 11/09/2026 os oito
+cenários (quatro por motor) passam: as quatro cenas entram em ordem, sem erros,
+e a volta cai na cena 02.
+
+O que continua sem cobertura: toque real (o governador está desligado no iOS de
+propósito), a emenda 03 → 04 vista a olho, e as políticas do iOS de verdade —
+os cenários emulam o que o WebKit reporta, não o que o AVFoundation faz. Testar
+em aparelho com `?diag=1`, com atenção a: rolagem para cima (caminho de seek, o
+mais caro) e `rs`/`pr`/`to` das faixas 02–04 na primeira passagem.

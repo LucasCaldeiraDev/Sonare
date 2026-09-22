@@ -342,6 +342,58 @@ const VIDEO_BOX = "absolute inset-0 z-[2]";
 /** svh, not lvh: the frame may run under the address bar, the words may not. */
 const COPY_BOX = "absolute inset-x-0 top-0 z-30 h-[100svh]";
 
+/**
+ * LOCAL COPIES. Every track is fetched whole in the background and, once it
+ * has arrived, the element is pointed at a blob: URL of it instead of the
+ * network file. After that a seek is a memory read.
+ *
+ * This is the answer to "the scenes take ages to load" on an iPhone, and the
+ * reason it is the answer is where the slow path actually was. It was never
+ * the decode — 720x1280 GOP-6 is nothing to a phone — it was that on iOS
+ * every seek into footage that has not arrived yet is a fresh HTTP range
+ * request from AVFoundation, which keeps its own network stack, shares
+ * nothing with the page's cache, and takes a few hundred milliseconds per
+ * round trip on a cellular link. This engine seeks for every backward step,
+ * every fling and every frame in Low Power Mode, so on a phone the seek path
+ * IS the film for a good share of the visit. And the scene boundary paid it
+ * twice: the next track was only fetched from three seconds of story before
+ * its cut, which is two seconds of wall clock for two megabytes, and the
+ * handover held the outgoing frame until those bytes were in.
+ *
+ * With the bytes local, none of that is on the network any more. The blob is
+ * still fed to AVFoundation through WebKit's resource loader, so iOS's
+ * preload policies still apply to the ELEMENT (it can sit at HAVE_METADATA
+ * until a seek asks for a frame — see the engine), but the answer to that
+ * seek now comes from memory.
+ *
+ * ORDER. 02, 03, 04, then 01. Scene 01 is already streaming from its network
+ * src the moment the page opens, which is what gets the first movement on
+ * screen soonest; fetching the same bytes a second time at that moment would
+ * only compete with it. The others are fetched in the order they are needed,
+ * and 01 last so that scrolling back into it stops costing a round trip too.
+ *
+ * WHEN A TRACK IS SWAPPED. Pointing an element at a new src resets it — the
+ * playhead goes to zero, whatever frame it held is gone — so the swap is only
+ * made while the eye is not on it: the track is hidden and not mid-handover,
+ * or it is scene 01 still parked on its opening frame, where the poster
+ * covers the reset with the identical image. A track that stays on screen
+ * keeps streaming until it is not; the engine's `emptied` handling and the
+ * priming seek put the swapped element straight back on its target.
+ *
+ * COST. 11.4 MB for the four files, fetched only on the phone path and only
+ * once (the CDN serves them immutable, so the second visit is the cache).
+ * Skipped under Data Saver, where the tracks stream as before. Desktop moves
+ * many times that for the same film.
+ */
+const PREFETCH_ORDER = [1, 2, 3, 0];
+/**
+ * Scene 01 gets this much buffered runway before the background fetch may
+ * start sharing its link — or this much wall clock, whichever comes first,
+ * because an iOS that caps preload never buffers ahead on its own.
+ */
+const PREFETCH_AFTER_BUFFERED_S = 3;
+const PREFETCH_DEADLINE_MS = 2500;
+
 export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
@@ -528,6 +580,18 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         return;
       }
       if (el.error) {
+        // A track that failed ON ITS LOCAL COPY goes back to the network file
+        // and takes the local copies off the table for every track: a media
+        // pipeline that refuses one blob: source refuses them all, and the
+        // film must not be worse off for having tried. Playwright's WebKit on
+        // Windows (Media Foundation) does exactly this; iOS does not.
+        if (adopted[i]) {
+          localRefused = true;
+          adopted[i] = false;
+          el.src = MOBILE_SEGMENTS[i].mobileSrc;
+          el.load();
+          return;
+        }
         const now = performance.now();
         if (now - lastReloadAt[i] < RELOAD_INTERVAL_MS) return;
         lastReloadAt[i] = now;
@@ -535,6 +599,83 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         return;
       }
       if (el.readyState === 0 && el.networkState === 1) engines[i]?.prime();
+    };
+
+    /** blob: URL of each track once its bytes are in, null until then. */
+    const localUrls: (string | null)[] = MOBILE_SEGMENTS.map(() => null);
+    /** True once the element has been pointed at its local copy. */
+    const adopted: boolean[] = MOBILE_SEGMENTS.map(() => false);
+    /** Set when a local copy errored: no further swaps, see `warm`. */
+    let localRefused = false;
+    /** Fetch progress per track, 0..1, for the readout. */
+    const download: number[] = MOBILE_SEGMENTS.map(() => 0);
+    const aborter = new AbortController();
+    const saveData =
+      (navigator as { connection?: { saveData?: boolean } }).connection?.saveData === true;
+    const mountedAt = performance.now();
+    let prefetchStarted = false;
+
+    /** Seconds of footage buffered past the playhead, or 0. */
+    const bufferedAhead = (el: HTMLVideoElement) => {
+      for (let r = 0; r < el.buffered.length; r++) {
+        if (el.currentTime >= el.buffered.start(r) && el.currentTime <= el.buffered.end(r)) {
+          return el.buffered.end(r) - el.currentTime;
+        }
+      }
+      return 0;
+    };
+
+    const prefetch = async () => {
+      for (const i of PREFETCH_ORDER) {
+        if (aborter.signal.aborted) return;
+        try {
+          const res = await fetch(MOBILE_SEGMENTS[i].mobileSrc, { signal: aborter.signal });
+          if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+          const total = Number(res.headers.get("content-length")) || 0;
+          const reader = res.body.getReader();
+          const chunks: BlobPart[] = [];
+          let received = 0;
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            received += value.byteLength;
+            if (total) download[i] = received / total;
+          }
+          download[i] = 1;
+          // The type matters: Safari will not hand a typeless blob to its
+          // media pipeline.
+          localUrls[i] = URL.createObjectURL(new Blob(chunks, { type: "video/mp4" }));
+        } catch {
+          // Refused or interrupted: the track keeps streaming from its
+          // network src, which is exactly what it was doing before.
+          if (aborter.signal.aborted) return;
+        }
+      }
+    };
+
+    /**
+     * Point every track whose bytes are in at its local copy, the moment the
+     * eye is off it. Cheap, and called every tick — the swap itself happens
+     * once per track.
+     */
+    const adopt = (target: number) => {
+      if (localRefused) return;
+      for (let i = 0; i < MOBILE_SEGMENTS.length; i++) {
+        const url = localUrls[i];
+        const el = videoRefs.current[i];
+        if (!url || adopted[i] || !el) continue;
+        const onScreen = i === active || gate?.to === i || (dissolving && i === active - 1);
+        // Scene 01 before anything has moved: the poster IS the frame it
+        // holds, so the reset the swap causes shows the same image.
+        const parkedAtOpen =
+          i === active && target < 0.5 && el.currentTime < 2 / FPS && !el.seeking;
+        if (onScreen && !parkedAtOpen) continue;
+        adopted[i] = true;
+        el.src = url;
+        el.preload = "auto";
+        el.load();
+      }
     };
 
     /**
@@ -661,6 +802,19 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
 
       engines[index]?.setTarget(seconds);
 
+      // The background fetch waits for scene 01 to have some runway of its
+      // own before it starts sharing the link — see PREFETCH_ORDER.
+      if (!prefetchStarted && !saveData) {
+        const first = videoRefs.current[0];
+        const settled =
+          !!first && (first.readyState >= 4 || bufferedAhead(first) >= PREFETCH_AFTER_BUFFERED_S);
+        if (settled || performance.now() - mountedAt > PREFETCH_DEADLINE_MS) {
+          prefetchStarted = true;
+          void prefetch();
+        }
+      }
+      adopt(target);
+
       // The next track is warmed from inside the current one, never at the
       // boundary — a fetch started at the moment it is needed is already late.
       const nextStart = MOBILE_SEGMENT_START_FRAME[index + 1];
@@ -710,6 +864,14 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         lines.push(`scroll ${Math.round(window.scrollY)}  alvo f${t.toFixed(1)}/${MOBILE_GLOBAL_FRAMES - 1}`);
         lines.push(`cena ${index + 1} local f${local}  ativa ${active + 1}  gov ${governorOff ? "off" : "on"}`);
         lines.push(`pin ${journeyActive ? "sim" : "nao"}  backlog ${Math.round(backlog)}`);
+        // Background fetch per track: percent in, and L once the element has
+        // been switched to its local copy.
+        lines.push(
+          `download ${saveData ? "off (data saver)" : localRefused ? "local recusado" : prefetchStarted ? "" : "aguardando"} ` +
+            MOBILE_SEGMENTS.map(
+              (_, i) => `${i + 1}:${Math.round(download[i] * 100)}%${adopted[i] ? "L" : ""}`,
+            ).join(" "),
+        );
         videoRefs.current.forEach((v, i) => {
           if (!v) return;
           const e = engines[i];
@@ -718,15 +880,10 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           // How much of the file has arrived, in seconds of footage past the
           // playhead — the number that separates "iOS will not fetch" from
           // "the network has not delivered yet".
-          let buffered = "-";
-          for (let r = 0; r < v.buffered.length; r++) {
-            if (v.currentTime >= v.buffered.start(r) && v.currentTime <= v.buffered.end(r)) {
-              buffered = (v.buffered.end(r) - v.currentTime).toFixed(1) + "s";
-              break;
-            }
-          }
+          const ahead = bufferedAhead(v);
+          const buffered = ahead > 0 ? ahead.toFixed(1) + "s" : "-";
           lines.push(
-            `v${i + 1} rs${v.readyState} ns${v.networkState} pre${v.preload.charAt(0)} buf${buffered} ` +
+            `v${i + 1}${adopted[i] ? "L" : ""} rs${v.readyState} ns${v.networkState} pre${v.preload.charAt(0)} buf${buffered} ` +
               `t${v.currentTime.toFixed(2)} ${v.paused ? "pause" : "play"} r${v.playbackRate.toFixed(2)} ` +
               `${e?.mode() ?? "-"} rej${st?.playRejects ?? 0} pr${st?.primes ?? 0} ` +
               `sk${st?.seeksCompleted ?? 0}/${st?.avgSeekMs ?? 0}ms to${st?.seekTimeouts ?? 0} ${err}`,
@@ -836,6 +993,8 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       // touchmove on a page that no longer has a film to govern.
       observer?.kill();
       engines.forEach((e) => e?.destroy());
+      aborter.abort();
+      localUrls.forEach((u) => u && URL.revokeObjectURL(u));
       ctx.revert();
     };
     // Built once. `closing` and `hero` are JSX, so they are a new object on

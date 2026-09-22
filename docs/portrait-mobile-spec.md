@@ -198,6 +198,46 @@ filme deve andar por seek.
 toca vídeo sem isso. Netlify (dona do `_headers`) responde; conferir na URL
 final com `curl -sI -H "Range: bytes=0-1023" <url do mp4>`.
 
+## iOS: "demora para carregar" — as cópias locais
+
+Com as cenas entrando, o relato seguinte foi lentidão. O caminho lento no
+iPhone não é o decode (720×1280 GOP 6 é pouco para o telefone): é que **cada
+seek em trecho ainda não baixado vira uma requisição HTTP Range nova do
+AVFoundation**, que tem pilha de rede própria, não compartilha nada com o cache
+da página e custa algumas centenas de milissegundos por ida e volta em rede
+celular. O motor faz seek a cada passo para trás, a cada arremesso e a cada
+frame em Modo de Baixo Consumo — numa parte boa da visita, o seek *é* o filme.
+E a fronteira de cena pagava duas vezes: a próxima faixa só começava a baixar
+3 s de história antes do corte (uns 2 s de relógio para 2 MB), e o handover
+segurava o quadro de saída até esses bytes chegarem.
+
+A resposta: **as quatro cenas são baixadas inteiras em segundo plano
+(`fetch`) e cada `<video>` é apontado para um `blob:` da cópia** assim que ela
+chega. Depois disso um seek é leitura de memória. A política de preload do iOS
+continua valendo para o *elemento* (ele pode ficar em `HAVE_METADATA` até um
+seek pedir o frame — o motor cuida), mas a resposta vem da memória.
+
+- **Ordem 02, 03, 04, 01.** A cena 01 já está em streaming pelo `src` de rede
+  no instante em que a página abre, e é isso que põe o primeiro movimento na
+  tela mais cedo; baixar os mesmos bytes de novo nesse momento só concorreria
+  com ela. As outras vêm na ordem em que são necessárias, e a 01 por último
+  para que voltar a ela também deixe de custar ida e volta.
+- **A troca só acontece com o olho fora da faixa**: apontar um elemento para um
+  `src` novo o zera (playhead em 0, quadro perdido), então só se troca faixa
+  oculta e fora de handover, ou a cena 01 ainda parada no quadro de abertura,
+  onde o pôster cobre o reset com a mesma imagem. Uma faixa que fica na tela
+  segue em streaming até sair dela.
+- **Se o pipeline recusar o `blob:`** (`ERRO4`), a faixa volta ao arquivo de
+  rede e nenhuma outra é trocada — o filme nunca fica pior por ter tentado. O
+  WebKit do Playwright no Windows (Media Foundation) faz exatamente isso; o iOS
+  não.
+- **Custo:** 11,4 MB, só no caminho do celular, uma vez (o CDN serve
+  `immutable`). Desligado sob Data Saver. O desktop move várias vezes isso para
+  o mesmo filme.
+
+No `?diag=1` a linha `download` mostra a porcentagem por cena e um `L` quando a
+faixa já está na cópia local; `local recusado` aparece se o fallback disparou.
+
 ## Verificação sem aparelho
 
 O painel de navegador do ambiente de desenvolvimento não dispara
@@ -205,9 +245,12 @@ O painel de navegador do ambiente de desenvolvimento não dispara
 exercitado ali. `tools/mobile-scrub-test.mjs` roda a jornada em Chromium e
 WebKit headless via Playwright (rAF a taxa cheia), rolando o pin inteiro e
 voltando até a cena 02, com as três políticas do iOS acima emuladas do lado da
-página como cenários (`lpm`, `metadata`, `idle`). Em 11/09/2026 os oito
-cenários (quatro por motor) passam: as quatro cenas entram em ordem, sem erros,
-e a volta cai na cena 02.
+página como cenários (`lpm`, `metadata`, `idle`), mais `slow` (só Chromium: link
+de 4 Mbit/s e 150 ms, para ver as cópias locais entrando durante a rolagem). Em
+22/09/2026 os nove cenários passam: as quatro cenas entram em ordem, sem erros,
+e a volta cai na cena 02. No WebKit do Playwright os `blob:` são recusados e o
+que passa é o fallback para rede; as cópias locais em WebKit de verdade só se
+veem no aparelho.
 
 O que continua sem cobertura: toque real (o governador está desligado no iOS de
 propósito), a emenda 03 → 04 vista a olho, e as políticas do iOS de verdade —

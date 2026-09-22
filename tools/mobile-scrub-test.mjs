@@ -18,6 +18,8 @@
 //              (HAVE_METADATA) until a seek on that element completes.
 //   idle       preload refused — readyState 0 / networkState 1 (HAVE_NOTHING,
 //              NETWORK_IDLE) until play() is called on that element.
+//   slow       Chromium only — a 4 Mbit/s, 150 ms link, so the background
+//              fetch and the local-copy swap are watched happening mid-scroll.
 //
 // A scenario passes when all four scenes become the active track in order,
 // the page logs no errors, and the scroll back lands inside scene 02. The
@@ -130,8 +132,20 @@ function parse(diag) {
         err: g(/ (ERRO\d|-)$/),
       };
     });
-  return { scene: m ? +m[1] : 0, local: m ? +m[2] : 0, active: m ? +m[3] : 0, vids };
+  // "download 1:100%L 2:43% 3:0% 4:0%" — the background fetch and which
+  // tracks have been switched to their local copy.
+  const dlLine = lines.find((l) => l.startsWith("download")) || "";
+  const dl = [...dlLine.matchAll(/(\d):(\d+)%(L?)/g)].map((x) => ({ pct: +x[2], local: x[3] === "L" }));
+  return { scene: m ? +m[1] : 0, local: m ? +m[2] : 0, active: m ? +m[3] : 0, vids, dl };
 }
+
+/**
+ * Chromium only: a throttled link, to watch the background fetch and the
+ * local-copy swap happen while the film is being scrolled rather than after.
+ * 4 Mbit/s and 150 ms is a poor cellular link; the four files total 11.4 MB,
+ * so under it they take about 23 s to arrive.
+ */
+const SLOW_LINK = { downloadThroughput: (4 * 1024 * 1024) / 8, uploadThroughput: (1 * 1024 * 1024) / 8, latency: 150 };
 
 async function run(name) {
   const browser = await pw[browserName].launch({ headless: true });
@@ -150,6 +164,12 @@ async function run(name) {
   page.on("console", (m) => {
     if (m.type() === "error") errors.push("console: " + m.text());
   });
+  if (name === "slow") {
+    if (browserName !== "chromium") throw new Error("the slow scenario needs Chromium (CDP throttling)");
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("Network.enable");
+    await cdp.send("Network.emulateNetworkConditions", { offline: false, ...SLOW_LINK });
+  }
   await page.goto(URL, { waitUntil: "load" });
   await page.waitForTimeout(1500);
 
@@ -189,10 +209,12 @@ async function run(name) {
         .join(" | "),
   );
   for (const e of errors.slice(0, 5)) console.log("  " + e);
-  console.log("  y      ms      scene   active  tracks (rs, t, mode)");
+  console.log("  download: " + end.dl.map((d, i) => `${i + 1}:${d.pct}%${d.local ? "L" : ""}`).join(" "));
+  console.log("  y      ms      scene   active  local  tracks (rs, t, mode)");
   for (const s of samples) {
     console.log(
       `  ${String(s.y).padStart(5)} ${String(s.ms).padStart(6)}  s${s.scene} f${String(s.local).padStart(3)}  a${s.active}    ` +
+        s.dl.map((d) => (d.local ? "L" : d.pct === 100 ? "+" : "-")).join("").padEnd(6) +
         s.vids.map((v) => `rs${v.rs} t${v.t.toFixed(2)} ${v.mode}`).join(" | "),
     );
   }
@@ -200,7 +222,8 @@ async function run(name) {
   return pass;
 }
 
-const list = which === "all" ? Object.keys(scenarios) : [which];
+const list =
+  which === "all" ? [...Object.keys(scenarios), ...(browserName === "chromium" ? ["slow"] : [])] : [which];
 let failed = 0;
 for (const n of list) {
   console.log(`\n== ${browserName} / ${n}`);

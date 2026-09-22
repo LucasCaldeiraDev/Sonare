@@ -550,7 +550,23 @@ export function createScrubEngine(
     if (q !== null) issueSeek(state, q);
   };
 
+  /**
+   * The element was reset — a load() or a new src. Any seek in flight is
+   * gone without a `seeked` (a play() in flight rejects with AbortError on
+   * its own), so the bookkeeping is cleared here rather than left for the
+   * watchdog. The target is kept: the ticker re-seeks the fresh element to it
+   * as soon as it has metadata, which is how a track swapped to its local
+   * copy lands back on the frame it was holding.
+   */
+  const onEmptied = () => {
+    state.seeking = false;
+    state.queued = null;
+    state.lastSeekEndedAt = 0;
+    state.mode = "idle";
+  };
+
   video.addEventListener("seeked", onSeeked);
+  video.addEventListener("emptied", onEmptied);
 
   // requestVideoFrameCallback tells us a frame was actually presented, which is
   // the only honest measure of perceived smoothness.
@@ -587,6 +603,7 @@ export function createScrubEngine(
       if (!state.video.paused) state.video.pause();
       state.video.playbackRate = 1;
       boundVideo.removeEventListener("seeked", onSeeked);
+      boundVideo.removeEventListener("emptied", onEmptied);
       state.video = el;
       state.seeking = false;
       state.queued = null;
@@ -599,6 +616,7 @@ export function createScrubEngine(
       state.lastPrimeAt = 0;
       boundVideo = el;
       el.addEventListener("seeked", onSeeked);
+      el.addEventListener("emptied", onEmptied);
       if (Math.abs(el.currentTime - at) > EPSILON) {
         try {
           el.currentTime = at;
@@ -631,6 +649,7 @@ export function createScrubEngine(
     destroy: () => {
       state.active = false;
       boundVideo.removeEventListener("seeked", onSeeked);
+      boundVideo.removeEventListener("emptied", onEmptied);
       if (hasRvfc && rvfcHandle && typeof video.cancelVideoFrameCallback === "function") {
         video.cancelVideoFrameCallback(rvfcHandle);
       }

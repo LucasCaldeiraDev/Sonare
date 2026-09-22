@@ -128,6 +128,7 @@ function parse(diag) {
         t: +g(/ t([\d.]+)/),
         mode: g(/ (idle|play|seek) /),
         rej: +g(/rej(\d+)/),
+        pc: +g(/pc(\d+)/),
         pr: +g(/pr(\d+)/),
         sk: +g(/sk(\d+)\//),
         to: +g(/to(\d+)/),
@@ -207,7 +208,7 @@ async function run(name) {
   console.log(
     "  per track: " +
       end.vids
-        .map((v) => `rs${v.rs} rej${v.rej} pr${v.pr} sk${v.sk} to${v.to} ${v.err}`)
+        .map((v) => `rs${v.rs} play${v.pc} rej${v.rej} pr${v.pr} sk${v.sk} to${v.to} ${v.err}`)
         .join(" | "),
   );
   for (const e of errors.slice(0, 5)) console.log("  " + e);

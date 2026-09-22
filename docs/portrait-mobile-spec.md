@@ -271,6 +271,33 @@ de scroll que não pousam por meio segundo e desliga o governador sozinho —
 `gov auto-off` no `?diag=1`. `?governor=off` agora funciona também na build
 publicada, para comparar no aparelho.
 
+## iOS: "gaps" de frames — o ciclo pausa/play
+
+Com as cenas carregando, o relato seguinte foi de travamentos e saltos de
+frames mesmo com tudo local. A causa está no motor, não na rede: em regime
+estável a taxa do vídeo converge para a velocidade do scroll e o playhead fica
+a um fio do alvo, cruzando-o o tempo todo — o alvo é contínuo, o playhead anda
+em passos de frame. A regra "à frente do scroll → segura" não tinha zona morta,
+então "à frente por qualquer quantia" era verdade numa fatia de cada período de
+frame: cada uma dessas fatias dava `pause()`, e o tick seguinte dava `play()`.
+No Chrome a retomada leva menos de um frame e o ciclo era invisível — por isso
+sobreviveu. No iOS o AVPlayer retoma em um a três frames, toda vez. A rodada
+anterior já tinha registrado o mesmo ciclo como colisões de `play()`/`pause()`
+"quase a cada tick" no iPhone, sem ligar os pontos.
+
+Agora (`LEAD_DEAD_ZONE_FRAMES` em `scrubEngine.ts`): dentro de um frame de
+adiantamento o vídeo continua tocando, mais devagar — a fórmula de taxa já lê
+um gap negativo como "desacelere" — e o alvo o alcança sem parar o pipeline.
+Além disso a taxa só é reescrita quando muda mais de 0,04 (cada escrita
+re-temporiza o pipeline no iOS), e uma pausa enfileirada atrás de um `play()`
+pendente é descartada se o tick seguinte quer o vídeo andando.
+
+No `?diag=1`, por faixa: `fps` são os frames realmente apresentados por segundo
+(rVFC) e `pp` as chamadas de `play()` por segundo, ambos sobre o último
+segundo; `pc` é o total de `play()`. Rolando a uma velocidade constante, `pp`
+deve ficar em 0 ou 1 e `fps` perto de 24 × a taxa. `pp` alto com `fps` baixo é
+o ciclo; `fps` baixo com `pp` baixo é o frame que não chega (seek ou decode).
+
 ## Verificação sem aparelho
 
 O painel de navegador do ambiente de desenvolvimento não dispara

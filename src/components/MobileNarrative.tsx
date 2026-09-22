@@ -654,6 +654,9 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
     const onNetwork: boolean[] = MOBILE_SEGMENTS.map(() => SAVE_DATA);
     /** Set when a local copy errored: no further swaps, see `abandonLocal`. */
     let localRefused = false;
+    /** What the bar last showed, so a tick that changes nothing writes nothing. */
+    let barShown = false;
+    let barScale = "0";
     /** Fetch progress per track, 0..1, for the bar and the readout. */
     const download: number[] = MOBILE_SEGMENTS.map(() => 0);
     const aborter = new AbortController();
@@ -890,8 +893,15 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       const waiting = !adopted[index] && !onNetwork[index];
       const bar = loadBarRef.current;
       if (bar) {
-        bar.style.opacity = waiting ? "1" : "0";
-        if (waiting) bar.style.transform = `scaleX(${download[index].toFixed(3)})`;
+        if (waiting !== barShown) {
+          barShown = waiting;
+          bar.style.opacity = waiting ? "1" : "0";
+        }
+        const scale = waiting ? download[index].toFixed(3) : barScale;
+        if (scale !== barScale) {
+          barScale = scale;
+          bar.style.transform = `scaleX(${scale})`;
+        }
       }
 
       // The next track is warmed from inside the current one, never at the
@@ -934,6 +944,29 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
      */
     let diagTimer = 0;
     if (diagOn) {
+      /**
+       * Per-track counters as they stood at each of the last samples, so the
+       * readout can show RATES over the last second: frames actually
+       * presented (rVFC) and play() calls. Presented frames falling while the
+       * target keeps moving is the picture not arriving; play() calls in the
+       * double digits is the pipeline being restarted — two different
+       * stutters with two different fixes.
+       */
+      const history: { at: number; presented: number; plays: number }[][] = MOBILE_SEGMENTS.map(
+        () => [],
+      );
+      const perSecond = (i: number, presented: number, plays: number) => {
+        const h = history[i];
+        const now = performance.now();
+        h.push({ at: now, presented, plays });
+        while (h.length > 1 && now - h[0].at > 1000) h.shift();
+        const dt = (now - h[0].at) / 1000;
+        if (dt < 0.4) return { fps: 0, pps: 0 };
+        return {
+          fps: Math.round((presented - h[0].presented) / dt),
+          pps: Math.round((plays - h[0].plays) / dt),
+        };
+      };
       const sample = () => {
         const el = diagRef.current;
         if (!el) return;
@@ -964,10 +997,11 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           // "the network has not delivered yet".
           const ahead = bufferedAhead(v);
           const buffered = ahead > 0 ? ahead.toFixed(1) + "s" : "-";
+          const rate = perSecond(i, st?.presentedFrames ?? 0, st?.playCalls ?? 0);
           lines.push(
             `v${i + 1}${adopted[i] ? "L" : onNetwork[i] ? "N" : ""} rs${v.readyState} ns${v.networkState} pre${v.preload.charAt(0)} buf${buffered} ` +
               `t${v.currentTime.toFixed(2)} ${v.paused ? "pause" : "play"} r${v.playbackRate.toFixed(2)} ` +
-              `${e?.mode() ?? "-"} rej${st?.playRejects ?? 0} pr${st?.primes ?? 0} ` +
+              `${e?.mode() ?? "-"} fps${rate.fps} pp${rate.pps} pc${st?.playCalls ?? 0} rej${st?.playRejects ?? 0} pr${st?.primes ?? 0} ` +
               `sk${st?.seeksCompleted ?? 0}/${st?.avgSeekMs ?? 0}ms to${st?.seekTimeouts ?? 0} ${err}`,
           );
         });

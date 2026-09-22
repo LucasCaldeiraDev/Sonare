@@ -81,6 +81,35 @@ const TAIL_FLOOR_FRAMES = 2;
  * genuinely running backwards, is worth a seek.
  */
 const LEAD_MAX_FRAMES = 12;
+
+/**
+ * A lead SMALLER than this is not held at all — the picture keeps playing,
+ * slower, and the target walks into it while it moves.
+ *
+ * The hold above exists for the floors' overshoot, but without a dead zone it
+ * fires on the ordinary steady state too. Once the rate has converged on the
+ * scroll's own velocity, the playhead sits within a hair of the target and
+ * crosses it constantly — the target is continuous and the playhead moves in
+ * frame steps — so "ahead by any amount" was true for a slice of every frame
+ * period. Each of those pause()d the element and the next tick play()ed it
+ * again. Chrome resumes in under a frame and the cycling was invisible there,
+ * which is why it survived; iOS resumes an AVPlayer in one to three frames,
+ * every time, and that was the stutter reported from the handset as "gaps in
+ * the frames" — the earlier round had already logged the same cycle as
+ * play()/pause() collisions "on nearly every tick". Inside one frame of lead
+ * the rate formula below already reads a negative gap as "slow down", which
+ * converges without ever stopping the pipeline. Past it, hold as before.
+ */
+const LEAD_DEAD_ZONE_FRAMES = 1;
+
+/**
+ * playbackRate is rewritten only when it moves by more than this. The rate
+ * formula produces a slightly different number every tick, and a rate write
+ * is not free on every player — iOS re-times the pipeline on each one. Four
+ * hundredths is below anything the eye can read off a 24 fps picture.
+ */
+const RATE_WRITE_HYSTERESIS = 0.04;
+
 /** A seek slower than this counts against the health score used for tier fallback. */
 const SLOW_SEEK_MS = 220;
 
@@ -144,6 +173,13 @@ export type ScrubStats = {
   playRejects: number;
   /** Last refusal's name, e.g. NotAllowedError. */
   lastPlayError: string;
+  /**
+   * Times play() was called. Against presentedFrames over the same window
+   * this is the pause/play cycling rate — the number that says whether a
+   * stutter is the pipeline being restarted rather than the frames not
+   * arriving.
+   */
+  playCalls: number;
   /** Seeks the watchdog gave up waiting for — see SEEK_WATCHDOG_MS. */
   seekTimeouts: number;
   /** Times prime() actually asked the element to fetch — see prime. */
@@ -305,6 +341,7 @@ function requestPause(s: EngineState) {
 function requestPlay(s: EngineState) {
   if (s.playPending) return;
   s.playPending = true;
+  s.stats.playCalls += 1;
   const p = s.video.play();
   if (p && typeof p.catch === "function") {
     p.then(() => {
@@ -429,14 +466,20 @@ function tick() {
     /** The story is being carried forward, as opposed to settling or reversing. */
     const advancing = s.velocity > ADVANCING_VEL_MIN;
 
-    // The picture is AHEAD of the scroll.
+    // The picture is AHEAD of the scroll while the story is still advancing.
     //
-    // While the story is still advancing this is the floors doing their job,
-    // not an error, so it is HELD rather than corrected: the target walks into
-    // the frame already on screen and playback resumes underneath it. Only a
-    // lead past the leash — or a story actually running backwards, where
-    // waiting would never converge — is worth the seek. See LEAD_MAX_FRAMES.
-    if (delta < 0 && advancing && -delta <= LEAD_MAX_FRAMES * FRAME) {
+    // By less than a frame: nothing to do here — the play path below reads
+    // the negative gap as "slow down" and the target walks into the picture
+    // while it keeps moving. See LEAD_DEAD_ZONE_FRAMES for why stopping it
+    // instead was the stutter on iOS.
+    //
+    // By more, up to the leash: this is the floors doing their job, not an
+    // error, so it is HELD rather than corrected — the target walks into the
+    // frame already on screen and playback resumes underneath it. Only a lead
+    // past the leash, or a story actually running backwards, where waiting
+    // would never converge, is worth the seek. See LEAD_MAX_FRAMES.
+    const slightlyAhead = delta < 0 && advancing && -delta <= LEAD_DEAD_ZONE_FRAMES * FRAME;
+    if (delta < 0 && advancing && !slightlyAhead && -delta <= LEAD_MAX_FRAMES * FRAME) {
       requestPause(s);
       s.mode = "idle";
       continue;
@@ -454,7 +497,7 @@ function tick() {
     // Backwards past the leash: media elements cannot play in reverse, so this
     // is the one case that must seek. Single in-flight, frame-quantized, aimed
     // ahead of the scroll by one seek-latency.
-    if (delta < 0) {
+    if (delta < 0 && !slightlyAhead) {
       requestPause(s);
       s.mode = "seek";
       issueSeek(s, leadTarget(s));
@@ -487,7 +530,12 @@ function tick() {
     const floor = delta > TAIL_FLOOR_FRAMES * FRAME ? 1 : RATE_MIN;
     const feedForward = advancing ? s.velocity : 0;
     const rate = clamp(feedForward + delta / RATE_TIME_CONSTANT, floor, s.rateCeiling());
-    if (Math.abs(v.playbackRate - rate) > 0.02) v.playbackRate = rate;
+    if (Math.abs(v.playbackRate - rate) > RATE_WRITE_HYSTERESIS) v.playbackRate = rate;
+    // A pause queued behind a play() that has not settled yet is a pause this
+    // engine no longer wants: the tick that queued it has been superseded by
+    // this one, which wants the picture moving. Left in place it would land
+    // the moment play() resolved and cost another restart to undo.
+    s.pauseQueued = false;
     if (v.paused) requestPlay(s);
   }
 }
@@ -528,6 +576,7 @@ export function createScrubEngine(
       playingMs: 0,
       playRejects: 0,
       lastPlayError: "",
+      playCalls: 0,
       seekTimeouts: 0,
       primes: 0,
     },

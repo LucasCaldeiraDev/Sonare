@@ -211,32 +211,65 @@ E a fronteira de cena pagava duas vezes: a próxima faixa só começava a baixar
 3 s de história antes do corte (uns 2 s de relógio para 2 MB), e o handover
 segurava o quadro de saída até esses bytes chegarem.
 
-A resposta: **as quatro cenas são baixadas inteiras em segundo plano
-(`fetch`) e cada `<video>` é apontado para um `blob:` da cópia** assim que ela
-chega. Depois disso um seek é leitura de memória. A política de preload do iOS
-continua valendo para o *elemento* (ele pode ficar em `HAVE_METADATA` até um
-seek pedir o frame — o motor cuida), mas a resposta vem da memória.
+A resposta: **as quatro cenas são baixadas inteiras (`fetch`), em ordem, e
+cada `<video>` é apontado para um `blob:` da cópia** assim que ela chega. Até
+lá o elemento **não tem `src` nenhum**. Depois disso um seek é leitura de
+memória. A política de preload do iOS continua valendo para o *elemento* (ele
+pode ficar em `HAVE_METADATA` até um seek pedir o frame — o motor cuida), mas a
+resposta vem da memória.
 
-- **Ordem 02, 03, 04, 01.** A cena 01 já está em streaming pelo `src` de rede
-  no instante em que a página abre, e é isso que põe o primeiro movimento na
-  tela mais cedo; baixar os mesmos bytes de novo nesse momento só concorreria
-  com ela. As outras vêm na ordem em que são necessárias, e a 01 por último
-  para que voltar a ela também deixe de custar ida e volta.
-- **A troca só acontece com o olho fora da faixa**: apontar um elemento para um
-  `src` novo o zera (playhead em 0, quadro perdido), então só se troca faixa
-  oculta e fora de handover, ou a cena 01 ainda parada no quadro de abertura,
-  onde o pôster cobre o reset com a mesma imagem. Uma faixa que fica na tela
-  segue em streaming até sair dela.
-- **Se o pipeline recusar o `blob:`** (`ERRO4`), a faixa volta ao arquivo de
-  rede e nenhuma outra é trocada — o filme nunca fica pior por ter tentado. O
+- **Ordem 01, 02, 03, 04, sem streaming no meio-tempo.** A primeira versão
+  disto mantinha a cena 01 em streaming pela rede enquanto a cópia dela vinha
+  por último, e só trocava uma faixa com o olho fora dela (trocar o `src` zera
+  o elemento). No aparelho isso produziu exatamente o relato que devia
+  resolver: a cena 01 era a que o visitante estava olhando, logo era a única
+  que nunca recebia a cópia — ficava no caminho de seek pela rede durante toda
+  a primeira passada e só funcionava depois de rolar tudo e voltar. Então: sem
+  `src` de rede. A 01 é baixada primeiro, o pôster segura o quadro de abertura
+  enquanto ela chega e a barra dourada sob o hero mostra o quanto já veio. Num
+  link bom é um ou dois segundos que o visitante gasta lendo a manchete; num
+  ruim é uma espera honesta em vez de um quadro que engasga. Cada arquivo
+  também é baixado exatamente uma vez.
+- **A barra.** Uma linha de 2 px na base do hero, preenchida com o progresso da
+  cena que o filme está esperando (a 01 no início; a próxima, se o visitante
+  chegar à fronteira antes dela). Some sozinha quando não há espera.
+- **Fallbacks.** Um `fetch` que falha aponta a faixa para o arquivo de rede e o
+  filme segue como antes. Um pipeline que recusa `blob:` (`ERRO4`) manda todas
+  as faixas para a rede, uma vez — o filme nunca fica pior por ter tentado. O
   WebKit do Playwright no Windows (Media Foundation) faz exatamente isso; o iOS
-  não.
+  não. Sob Data Saver nada é baixado e as faixas fazem streaming desde o início.
 - **Custo:** 11,4 MB, só no caminho do celular, uma vez (o CDN serve
-  `immutable`). Desligado sob Data Saver. O desktop move várias vezes isso para
-  o mesmo filme.
+  `immutable`). O desktop move várias vezes isso para o mesmo filme.
 
-No `?diag=1` a linha `download` mostra a porcentagem por cena e um `L` quando a
-faixa já está na cópia local; `local recusado` aparece se o fallback disparou.
+No `?diag=1` a linha `download` mostra a porcentagem por cena, `L` quando a
+faixa já está na cópia local e `N` quando caiu para a rede; `local recusado`
+aparece se o fallback geral disparou.
+
+## iOS: o governador de volta
+
+O relato seguinte foi que o iPhone rolava sem limite de velocidade, diferente
+do Android. Era verdade e era de propósito: o governador estava desligado no
+iOS por um comentário que atribuía ao WebKit a recusa de `scrollTo` com o dedo
+na tela — numa rodada anterior a página simplesmente não se movia ao arrastar.
+
+O diagnóstico estava errado, e a prova é o próprio `normalizeScroll` do GSAP,
+que faz exatamente o que o governador faz (Observer com `preventDefault`,
+scroll escrito por JS) e funciona no iOS. A diferença são três linhas que ele
+escreve ao ativar e o governador nunca escreveu: `touch-action: pan-x
+pinch-zoom` em `html` e `body`, `scroll-behavior: auto`, e scroll nunca em
+exatamente 0 (bug do iOS em `TouchEvent.clientY`). Sem o `touch-action`, o
+compositor decide **no início do gesto**, a partir do CSS, que a rolagem
+vertical é dele; o `preventDefault` chega tarde demais e cada `scrollTo` é
+sobrescrito por uma rolagem nativa que não anda porque o `touchmove` foi
+cancelado. As duas metades falham juntas — o que foi visto.
+
+`claim`/`release` em `MobileNarrative.tsx` espelham essas linhas enquanto o
+filme está pinado. `allowClicks` no Observer redespacha o toque que o
+`preventDefault` engoliria, para os links do hero continuarem clicáveis. E se
+algum dia a página voltar a não se mover sob o dedo, `drive` percebe escritas
+de scroll que não pousam por meio segundo e desliga o governador sozinho —
+`gov auto-off` no `?diag=1`. `?governor=off` agora funciona também na build
+publicada, para comparar no aparelho.
 
 ## Verificação sem aparelho
 

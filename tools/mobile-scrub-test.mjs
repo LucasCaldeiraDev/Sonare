@@ -51,8 +51,10 @@ const browserName = process.argv[2] || "chromium";
 const which = process.argv[3] || "all";
 const URL = process.argv[4] || "http://localhost:5173/?diag=1";
 
-// The iPhone UA is what switches the touch governor off (see MobileNarrative),
-// so the run takes the same input path a real iPhone does.
+// The iPhone UA puts the page on the same platform branches a real iPhone
+// takes (see isWebKitTouch in MobileNarrative). The scroll here is written
+// with window.scrollTo, which the touch governor never sees, so the governor
+// is not what this exercises — it is the film, the engine and the loading.
 const IPHONE_UA =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
 

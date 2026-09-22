@@ -287,44 +287,63 @@ const REFRESH_FALLBACK_HZ = 60;
  * phones differ by more than desktops do. Comparing two values on the actual
  * device is a query string rather than a rebuild.
  */
-const governorParam = import.meta.env.DEV
-  ? new URLSearchParams(window.location.search).get("governor")
-  : null;
+const governorParam =
+  typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("governor") : null;
 const governorFraction = Number(governorParam) || GOVERNOR_FRACTION;
 
 /**
- * iOS gets no governor, and the reason is a platform limit rather than a
- * preference.
+ * iOS is WebKit driving the scroll from the compositor, which is why the
+ * governor needs one more thing there than it needed anywhere else.
  *
- * The governor's whole method is: call preventDefault on the touch so the page
- * does not scroll itself, then hand the scroll back with window.scrollTo at a
- * metered rate. That second half is what WebKit will not honour. Safari drives
- * scrolling on the compositor, and while a finger is down on a gesture the page
- * has claimed, main-thread scroll writes are unreliable — they land late, or
- * not until the touch ends. So the first half succeeds and the second fails,
- * which is not a slow film: it is a page that does not move while you drag it.
+ * The governor's method is: preventDefault on the touch so the page does not
+ * scroll itself, then hand the scroll back with window.scrollTo at a metered
+ * rate. For one round iOS got no governor at all, because on a handset the
+ * second half visibly failed — the page did not move while you dragged it —
+ * and the failure was read as WebKit refusing main-thread scroll writes while
+ * a finger is down. It is not that. It is that on iOS the compositor decides
+ * at the START of a gesture whether it owns the pan, and it decides from CSS,
+ * not from what a touchmove listener will do a few milliseconds later: unless
+ * `touch-action` has taken vertical panning away from it, it claims the
+ * gesture, preventDefault arrives too late to matter, and every scrollTo the
+ * governor makes is overridden by a native scroll that is not moving because
+ * the touchmove was cancelled. Both halves fail together, which is exactly
+ * what was seen.
  *
- * Every WebKit browser on iOS inherits this, Chrome and Firefox included, which
- * is why the test is the platform and not the brand. iPadOS reports itself as
- * a Mac, hence the touch-points check.
+ * GSAP's own normalizeScroll is the proof, because it does precisely what the
+ * governor does — Observer with preventDefault, scroll written from JS — and
+ * it works on iOS. On enable it writes `touch-action: pan-x pinch-zoom` on
+ * <html> and <body>, forces `scroll-behavior: auto`, and keeps the scroll off
+ * exactly 0 (an iOS bug makes TouchEvent.clientY unreliable there). `claim`
+ * below mirrors those three lines, and that is the whole difference.
  *
- * Losing the governor there costs less than it looks. Its job is to stop a
- * fling asking for more frames per second than the decoder can present, and two
- * other things in this pipeline already absorb a fling on their own —
- * ScrollTrigger's scrub damping spreads the jump over its own time constant,
- * and past FORWARD_SEEK_GAP the scrub engine stops chasing and seeks. The film
- * may travel faster than ideal during a violent flick. That is a quality
- * problem, and a page that will not scroll is not.
+ * The check is the platform, not the brand: every browser on iOS is this
+ * WebKit. iPadOS reports itself as a Mac, hence the touch-points test.
  *
- * This is the same path `?governor=off` has always taken, so it is a mode that
- * has been exercised rather than a new one invented for this.
+ * `?governor=off` still restores the raw gesture, and it now works in the
+ * deployed build too — the phone is the only place the comparison means
+ * anything. If the page ever stops moving under the finger again, `drive`
+ * notices scroll writes that do not land and switches the governor off by
+ * itself; the readout says `gov auto-off` when that has happened.
  */
 const isWebKitTouch =
   typeof navigator !== "undefined" &&
   (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
 
-const governorOff = governorParam === "off" || isWebKitTouch;
+const governorOff = governorParam === "off";
+
+/**
+ * How long the governor may keep writing scroll positions that do not land
+ * before it concludes the page is not its to move and stands down. Half a
+ * second of a finger dragging a page that does not move is already too long;
+ * a single missed write is not evidence of anything.
+ */
+const GOVERNOR_STUCK_MS = 500;
+
+/** Data Saver: no background fetch, the tracks stream as they did before. */
+const SAVE_DATA =
+  typeof navigator !== "undefined" &&
+  (navigator as { connection?: { saveData?: boolean } }).connection?.saveData === true;
 
 /**
  * The picture fills the screen, and that is the only framing there is.
@@ -343,9 +362,9 @@ const VIDEO_BOX = "absolute inset-0 z-[2]";
 const COPY_BOX = "absolute inset-x-0 top-0 z-30 h-[100svh]";
 
 /**
- * LOCAL COPIES. Every track is fetched whole in the background and, once it
- * has arrived, the element is pointed at a blob: URL of it instead of the
- * network file. After that a seek is a memory read.
+ * LOCAL COPIES. Every track is fetched whole, in order, and each element is
+ * pointed at a blob: URL of its file the moment the bytes are in. Until then
+ * the element has NO src at all. After that a seek is a memory read.
  *
  * This is the answer to "the scenes take ages to load" on an iPhone, and the
  * reason it is the answer is where the slow path actually was. It was never
@@ -366,33 +385,32 @@ const COPY_BOX = "absolute inset-x-0 top-0 z-30 h-[100svh]";
  * until a seek asks for a frame — see the engine), but the answer to that
  * seek now comes from memory.
  *
- * ORDER. 02, 03, 04, then 01. Scene 01 is already streaming from its network
- * src the moment the page opens, which is what gets the first movement on
- * screen soonest; fetching the same bytes a second time at that moment would
- * only compete with it. The others are fetched in the order they are needed,
- * and 01 last so that scrolling back into it stops costing a round trip too.
+ * WHY NO STREAMING SRC IN THE MEANTIME. The first version of this kept scene
+ * 01 streaming from the network while its copy was fetched last, and only
+ * swapped a track to its copy while the eye was off it, because a src change
+ * resets the element. On the phone that produced exactly the report it was
+ * meant to fix: scene 01 was the one scene the visitor was looking at, so it
+ * was the one scene that never got its copy — it stayed on the network-bound
+ * seek path for the whole first pass, and only worked once the visitor had
+ * scrolled through everything and come back. So: no network src. Scene 01 is
+ * fetched first, the poster holds the opening frame while it arrives, and the
+ * bar under the hero shows how far along it is. On a good link that is a
+ * second or two the visitor spends reading the headline anyway; on a poor one
+ * it is an honest wait instead of a picture that jerks. Each file is also
+ * fetched exactly once this way, where streaming-then-copying cost iOS the
+ * first file twice.
  *
- * WHEN A TRACK IS SWAPPED. Pointing an element at a new src resets it — the
- * playhead goes to zero, whatever frame it held is gone — so the swap is only
- * made while the eye is not on it: the track is hidden and not mid-handover,
- * or it is scene 01 still parked on its opening frame, where the poster
- * covers the reset with the identical image. A track that stays on screen
- * keeps streaming until it is not; the engine's `emptied` handling and the
- * priming seek put the swapped element straight back on its target.
+ * FALLBACKS. A fetch that fails points that track at its network file and
+ * the film goes on as it did before. A media pipeline that refuses a blob:
+ * source (Playwright's WebKit on Windows does; iOS does not) sends every
+ * track back to the network the same way, once. Under Data Saver nothing is
+ * fetched and the tracks stream from the start.
  *
  * COST. 11.4 MB for the four files, fetched only on the phone path and only
  * once (the CDN serves them immutable, so the second visit is the cache).
- * Skipped under Data Saver, where the tracks stream as before. Desktop moves
- * many times that for the same film.
+ * Desktop moves many times that for the same film.
  */
-const PREFETCH_ORDER = [1, 2, 3, 0];
-/**
- * Scene 01 gets this much buffered runway before the background fetch may
- * start sharing its link — or this much wall clock, whichever comes first,
- * because an iOS that caps preload never buffers ahead on its own.
- */
-const PREFETCH_AFTER_BUFFERED_S = 3;
-const PREFETCH_DEADLINE_MS = 2500;
+const PREFETCH_ORDER = [0, 1, 2, 3];
 
 export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
@@ -400,6 +418,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
   const heroRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef<HTMLDivElement>(null);
   const scrimRef = useRef<HTMLDivElement>(null);
+  const loadBarRef = useRef<HTMLDivElement>(null);
   const diagRef = useRef<HTMLPreElement>(null);
 
   /** Where the scroll wants to be, in global logical frames. Written by ScrollTrigger. */
@@ -497,12 +516,41 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
      * and the page scrolls the other way, the same conversion normalizeScroll
      * makes for its own momentum.
      */
+    /**
+     * Take the vertical pan away from the compositor while the film owns the
+     * screen, and give it back after — the lines normalizeScroll writes on
+     * enable, and the reason the governor works on iOS at all. See governorOff.
+     */
+    const claim = () => {
+      document.documentElement.style.touchAction = "pan-x pinch-zoom";
+      document.body.style.touchAction = "pan-x pinch-zoom";
+      // ScrollTrigger writes this back to "smooth" after every refresh (it
+      // saw the stylesheet's value at init and restores it), so this line
+      // only holds between refreshes. The scroll writes in `drive` carry
+      // `behavior: "instant"` themselves, which is what actually protects
+      // them; this is the belt to that pair of braces.
+      document.documentElement.style.scrollBehavior = "auto";
+    };
+    const release = () => {
+      document.documentElement.style.removeProperty("touch-action");
+      document.body.style.removeProperty("touch-action");
+      document.documentElement.style.removeProperty("scroll-behavior");
+    };
+
+    /** Set by `drive` once scroll writes stopped landing — see GOVERNOR_STUCK_MS. */
+    let governorFailed = false;
+    let stuckMs = 0;
+
     const observer = governorOff
       ? null
       : Observer.create({
           target: window,
           type: "touch",
           preventDefault: true,
+          // preventDefault on the press swallows the tap that would have
+          // become a click; Observer re-dispatches it on a release that did
+          // not drag, which is what keeps the hero's links tappable.
+          allowClicks: true,
           onChangeY: (self) => {
             backlog += -self.deltaY;
           },
@@ -586,10 +634,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         // film must not be worse off for having tried. Playwright's WebKit on
         // Windows (Media Foundation) does exactly this; iOS does not.
         if (adopted[i]) {
-          localRefused = true;
-          adopted[i] = false;
-          el.src = MOBILE_SEGMENTS[i].mobileSrc;
-          el.load();
+          abandonLocal();
           return;
         }
         const now = performance.now();
@@ -605,15 +650,31 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
     const localUrls: (string | null)[] = MOBILE_SEGMENTS.map(() => null);
     /** True once the element has been pointed at its local copy. */
     const adopted: boolean[] = MOBILE_SEGMENTS.map(() => false);
-    /** Set when a local copy errored: no further swaps, see `warm`. */
+    /** True once the element has been pointed at its network file instead. */
+    const onNetwork: boolean[] = MOBILE_SEGMENTS.map(() => SAVE_DATA);
+    /** Set when a local copy errored: no further swaps, see `abandonLocal`. */
     let localRefused = false;
-    /** Fetch progress per track, 0..1, for the readout. */
+    /** Fetch progress per track, 0..1, for the bar and the readout. */
     const download: number[] = MOBILE_SEGMENTS.map(() => 0);
     const aborter = new AbortController();
-    const saveData =
-      (navigator as { connection?: { saveData?: boolean } }).connection?.saveData === true;
-    const mountedAt = performance.now();
-    let prefetchStarted = false;
+
+    /** The old path, per track: stream the file from the network. */
+    const useNetwork = (i: number) => {
+      const el = videoRefs.current[i];
+      if (!el || (onNetwork[i] && !adopted[i])) return;
+      onNetwork[i] = true;
+      adopted[i] = false;
+      el.src = MOBILE_SEGMENTS[i].mobileSrc;
+      el.preload = "auto";
+      el.load();
+    };
+
+    /** A blob: source was refused: every track goes to the network, once. */
+    const abandonLocal = () => {
+      localRefused = true;
+      aborter.abort();
+      for (let i = 0; i < MOBILE_SEGMENTS.length; i++) useNetwork(i);
+    };
 
     /** Seconds of footage buffered past the playhead, or 0. */
     const bufferedAhead = (el: HTMLVideoElement) => {
@@ -647,30 +708,27 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           // media pipeline.
           localUrls[i] = URL.createObjectURL(new Blob(chunks, { type: "video/mp4" }));
         } catch {
-          // Refused or interrupted: the track keeps streaming from its
-          // network src, which is exactly what it was doing before.
           if (aborter.signal.aborted) return;
+          // Could not be fetched: this track streams instead, as before.
+          useNetwork(i);
         }
       }
     };
+    if (!SAVE_DATA) void prefetch();
 
     /**
-     * Point every track whose bytes are in at its local copy, the moment the
-     * eye is off it. Cheap, and called every tick — the swap itself happens
-     * once per track.
+     * Point every track whose bytes are in at its local copy. The element had
+     * no src until now, so there is nothing on it to lose: whatever it shows
+     * (scene 01's poster, or nothing) stays until the copy decodes, and the
+     * engine seeks the fresh element to its target from memory. Cheap, and
+     * called every tick — the swap itself happens once per track.
      */
-    const adopt = (target: number) => {
+    const adopt = () => {
       if (localRefused) return;
       for (let i = 0; i < MOBILE_SEGMENTS.length; i++) {
         const url = localUrls[i];
         const el = videoRefs.current[i];
-        if (!url || adopted[i] || !el) continue;
-        const onScreen = i === active || gate?.to === i || (dissolving && i === active - 1);
-        // Scene 01 before anything has moved: the poster IS the frame it
-        // holds, so the reset the swap causes shows the same image.
-        const parkedAtOpen =
-          i === active && target < 0.5 && el.currentTime < 2 / FPS && !el.seeking;
-        if (onScreen && !parkedAtOpen) continue;
+        if (!url || adopted[i] || onNetwork[i] || !el) continue;
         adopted[i] = true;
         el.src = url;
         el.preload = "auto";
@@ -789,8 +847,32 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
            * smooth animation, cancelling the last before it has travelled.
            * Measured there at ~200 px/s delivered against a 1395 px/s budget.
            */
-          window.scrollTo({ top: window.scrollY + step, behavior: "instant" });
+          const before = window.scrollY;
+          const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+          const want = Math.min(Math.max(before + step, 0), maxScroll);
+          window.scrollTo({ top: want, behavior: "instant" });
+          // A write that did not land. One is noise; half a second of them is
+          // the compositor owning a gesture this code thinks it owns, and the
+          // visitor dragging a page that does not move. Stand down for good
+          // rather than keep swallowing the touch — see governorOff. Only a
+          // write that asked for real movement counts: at the page's own
+          // ends there is nothing to land.
+          if (Math.abs(want - before) >= 1 && Math.abs(window.scrollY - before) < 0.5) {
+            stuckMs += deltaMs;
+            if (stuckMs > GOVERNOR_STUCK_MS && observer) {
+              governorFailed = true;
+              observer.kill();
+              release();
+              backlog = 0;
+            }
+          } else stuckMs = 0;
         } else backlog += step;
+      }
+      // iOS reports TouchEvent.clientY wildly wrong at a scroll of exactly 0
+      // (normalizeScroll works around the same bug); one pixel in is invisible
+      // and keeps the gesture measurable.
+      if (journeyActive && observer && !governorFailed && isWebKitTouch && window.scrollY < 1) {
+        window.scrollTo({ top: 1, behavior: "instant" });
       }
 
       const target = targetFrameRef.current;
@@ -802,18 +884,15 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
 
       engines[index]?.setTarget(seconds);
 
-      // The background fetch waits for scene 01 to have some runway of its
-      // own before it starts sharing the link — see PREFETCH_ORDER.
-      if (!prefetchStarted && !saveData) {
-        const first = videoRefs.current[0];
-        const settled =
-          !!first && (first.readyState >= 4 || bufferedAhead(first) >= PREFETCH_AFTER_BUFFERED_S);
-        if (settled || performance.now() - mountedAt > PREFETCH_DEADLINE_MS) {
-          prefetchStarted = true;
-          void prefetch();
-        }
+      adopt();
+      // The bar under the hero: how much of the scene the film needs next has
+      // arrived. Only shown while a track is actually being waited for.
+      const waiting = !adopted[index] && !onNetwork[index];
+      const bar = loadBarRef.current;
+      if (bar) {
+        bar.style.opacity = waiting ? "1" : "0";
+        if (waiting) bar.style.transform = `scaleX(${download[index].toFixed(3)})`;
       }
-      adopt(target);
 
       // The next track is warmed from inside the current one, never at the
       // boundary — a fetch started at the moment it is needed is already late.
@@ -862,14 +941,17 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         const { index, local } = locate(Math.floor(t));
         const lines: string[] = [];
         lines.push(`scroll ${Math.round(window.scrollY)}  alvo f${t.toFixed(1)}/${MOBILE_GLOBAL_FRAMES - 1}`);
-        lines.push(`cena ${index + 1} local f${local}  ativa ${active + 1}  gov ${governorOff ? "off" : "on"}`);
+        lines.push(
+          `cena ${index + 1} local f${local}  ativa ${active + 1}  gov ${governorOff ? "off" : governorFailed ? "auto-off" : "on"}`,
+        );
         lines.push(`pin ${journeyActive ? "sim" : "nao"}  backlog ${Math.round(backlog)}`);
         // Background fetch per track: percent in, and L once the element has
         // been switched to its local copy.
         lines.push(
-          `download ${saveData ? "off (data saver)" : localRefused ? "local recusado" : prefetchStarted ? "" : "aguardando"} ` +
+          `download ${SAVE_DATA ? "off (data saver)" : localRefused ? "local recusado" : ""} ` +
             MOBILE_SEGMENTS.map(
-              (_, i) => `${i + 1}:${Math.round(download[i] * 100)}%${adopted[i] ? "L" : ""}`,
+              (_, i) =>
+                `${i + 1}:${Math.round(download[i] * 100)}%${adopted[i] ? "L" : onNetwork[i] ? "N" : ""}`,
             ).join(" "),
         );
         videoRefs.current.forEach((v, i) => {
@@ -883,7 +965,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           const ahead = bufferedAhead(v);
           const buffered = ahead > 0 ? ahead.toFixed(1) + "s" : "-";
           lines.push(
-            `v${i + 1}${adopted[i] ? "L" : ""} rs${v.readyState} ns${v.networkState} pre${v.preload.charAt(0)} buf${buffered} ` +
+            `v${i + 1}${adopted[i] ? "L" : onNetwork[i] ? "N" : ""} rs${v.readyState} ns${v.networkState} pre${v.preload.charAt(0)} buf${buffered} ` +
               `t${v.currentTime.toFixed(2)} ${v.paused ? "pause" : "play"} r${v.playbackRate.toFixed(2)} ` +
               `${e?.mode() ?? "-"} rej${st?.playRejects ?? 0} pr${st?.primes ?? 0} ` +
               `sk${st?.seeksCompleted ?? 0}/${st?.avgSeekMs ?? 0}ms to${st?.seekTimeouts ?? 0} ${err}`,
@@ -935,10 +1017,12 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           // on the way out so leaving the section never coasts.
           onToggle: (self) => {
             journeyActive = self.isActive;
-            if (self.isActive) {
-              observer?.enable();
+            if (self.isActive && observer && !governorFailed) {
+              claim();
+              observer.enable();
             } else {
               observer?.disable();
+              release();
               backlog = 0;
             }
           },
@@ -1041,7 +1125,9 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
             ref={(el) => {
               videoRefs.current[i] = el;
             }}
-            src={seg.mobileSrc}
+            // No src until the file's bytes are local — see LOCAL COPIES.
+            // Data Saver is the one case that streams from the start.
+            src={SAVE_DATA ? seg.mobileSrc : undefined}
             poster={i === 0 ? MOBILE_POSTER : undefined}
             muted
             playsInline
@@ -1077,6 +1163,15 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
             {hero}
           </div>
         )}
+
+        {/* How much of the scene the film is waiting for has arrived. Written
+            by `drive`; invisible whenever nothing is being waited for. */}
+        <div
+          ref={loadBarRef}
+          aria-hidden="true"
+          className="absolute inset-x-0 bottom-0 h-0.5 origin-left bg-sonare-gold/80 opacity-0 transition-opacity duration-500"
+          style={{ transform: "scaleX(0)" }}
+        />
 
 
         {closing && (

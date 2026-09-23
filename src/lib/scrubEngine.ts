@@ -236,6 +236,22 @@ export type ScrubEngine = {
    * decides WHEN an element deserves its bytes, this only decides HOW to ask.
    */
   prime: () => void;
+  /**
+   * Start the playback pipeline once, without moving the picture, so the
+   * first play() the scroll asks for is a resume rather than a cold start.
+   *
+   * On iOS the first play() on a freshly loaded element is the expensive
+   * one — AVPlayer prerolls, one to three hundred milliseconds — and every
+   * later one resumes in about a frame. Scene 01 pays the cold start while
+   * the film is still at rest, where nobody sees it; a scene entered mid-scroll
+   * pays it as a freeze at its first frame. This is the same play()-with-a-
+   * pause-queued request as prime(), at RATE_MIN, so the picture advances a
+   * few milliseconds of footage before the pause lands: under half a frame,
+   * nothing on screen changes, and nothing needs seeking back. Refused where
+   * play() is refused (Low Power Mode), harmlessly. Returns whether a play()
+   * was actually issued, so the caller can keep asking until one is.
+   */
+  preroll: () => boolean;
   stats: () => ScrubStats;
   destroy: () => void;
 };
@@ -374,10 +390,13 @@ function requestPlay(s: EngineState) {
  * play() with a pause queued behind it, rate-limited to PLAY_RETRY_MS. See the
  * `prime` entry on ScrubEngine for why this is the request to make.
  */
-function primeElement(s: EngineState) {
+function primeElement(s: EngineState): boolean {
   const now = performance.now();
-  if (s.playPending || now < s.playBlockedUntil) return;
-  if (now - s.lastPrimeAt < PLAY_RETRY_MS) return;
+  if (s.playPending || now < s.playBlockedUntil) return false;
+  // `lastPrimeAt` of 0 means never — and has to be read that way, because
+  // performance.now() is itself under PLAY_RETRY_MS for the first two seconds
+  // of the page's life, which is exactly when the first prime is asked for.
+  if (s.lastPrimeAt && now - s.lastPrimeAt < PLAY_RETRY_MS) return false;
   s.lastPrimeAt = now;
   s.stats.primes += 1;
   requestPlay(s);
@@ -385,6 +404,7 @@ function primeElement(s: EngineState) {
   // actually playing: enough to have fetched and painted a frame, not enough
   // to have moved the story.
   requestPause(s);
+  return true;
 }
 
 /**
@@ -694,6 +714,14 @@ export function createScrubEngine(
     },
     isReady: () => video.readyState >= 3,
     prime: () => primeElement(state),
+    preroll: () => {
+      if (state.playPending || !state.video.paused) return false;
+      // At the floor rate the queued pause lands before half a frame has
+      // gone by; the rate formula rewrites this the moment the scroll asks
+      // for movement.
+      if (Math.abs(state.video.playbackRate - RATE_MIN) > 0.001) state.video.playbackRate = RATE_MIN;
+      return primeElement(state);
+    },
     stats: () => ({ ...state.stats }),
     destroy: () => {
       state.active = false;

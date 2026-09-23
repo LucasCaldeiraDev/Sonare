@@ -657,6 +657,14 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
     /** What the bar last showed, so a tick that changes nothing writes nothing. */
     let barShown = false;
     let barScale = "0";
+    /**
+     * When each track's pipeline was last pre-rolled (see engine.preroll), 0
+     * for never. Done once a track holds a decodable frame, and again on the
+     * way into the lead window before its boundary if that was a while ago —
+     * a phone under memory pressure may have let an idle pipeline go.
+     */
+    const prerolledAt: number[] = MOBILE_SEGMENTS.map(() => 0);
+    const PREROLL_STALE_MS = 10000;
     /** Fetch progress per track, 0..1, for the bar and the readout. */
     const download: number[] = MOBILE_SEGMENTS.map(() => 0);
     const aborter = new AbortController();
@@ -667,6 +675,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       if (!el || (onNetwork[i] && !adopted[i])) return;
       onNetwork[i] = true;
       adopted[i] = false;
+      prerolledAt[i] = 0;
       el.src = MOBILE_SEGMENTS[i].mobileSrc;
       el.preload = "auto";
       el.load();
@@ -733,10 +742,27 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         const el = videoRefs.current[i];
         if (!url || adopted[i] || onNetwork[i] || !el) continue;
         adopted[i] = true;
+        prerolledAt[i] = 0;
         el.src = url;
         el.preload = "auto";
         el.load();
       }
+    };
+
+    /**
+     * Pre-roll a track's pipeline — see engine.preroll for what that buys on
+     * iOS. Called every tick; acts once per track, and once more inside the
+     * lead window if the last pre-roll has gone stale.
+     */
+    const preroll = (i: number, force: boolean) => {
+      const el = videoRefs.current[i];
+      const engine = engines[i];
+      if (!el || !engine || el.readyState < 2 || !el.paused) return;
+      const now = performance.now();
+      if (prerolledAt[i] && !(force && now - prerolledAt[i] > PREROLL_STALE_MS)) return;
+      // Only counts once the engine has actually issued the play(); a refusal
+      // (pending play, rate limit, Low Power Mode) is asked again next tick.
+      if (engine.preroll()) prerolledAt[i] = now;
     };
 
     /**
@@ -906,9 +932,13 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
 
       // The next track is warmed from inside the current one, never at the
       // boundary — a fetch started at the moment it is needed is already late.
+      // Its pipeline is pre-rolled on the same lead, so the cut lands on a
+      // resume rather than a cold start.
       const nextStart = MOBILE_SEGMENT_START_FRAME[index + 1];
-      if (nextStart !== undefined && target > nextStart - PRELOAD_LEAD_FRAMES) warm(index + 1);
+      const inLead = nextStart !== undefined && target > nextStart - PRELOAD_LEAD_FRAMES;
+      if (inLead) warm(index + 1);
       warm(index);
+      for (let i = 0; i < MOBILE_SEGMENTS.length; i++) preroll(i, inLead && i === index + 1);
 
       if (index === active) {
         gate = null;

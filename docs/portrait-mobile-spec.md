@@ -298,6 +298,17 @@ segundo; `pc` é o total de `play()`. Rolando a uma velocidade constante, `pp`
 deve ficar em 0 ou 1 e `fps` perto de 24 × a taxa. `pp` alto com `fps` baixo é
 o ciclo; `fps` baixo com `pp` baixo é o frame que não chega (seek ou decode).
 
+**O arranque frio das cenas 02–04.** Com o ciclo resolvido, a cena 01 ficou
+limpa e as outras não. A diferença é onde cada uma paga o primeiro `play()` de
+um elemento recém-carregado: no iOS ele custa o preroll do AVPlayer, 100 a
+300 ms, e todo `play()` seguinte retoma em cerca de um frame. A cena 01 paga
+isso com o filme parado, onde ninguém vê; uma cena que entra no meio do scroll
+pagava como um congelamento no primeiro quadro dela. Agora cada faixa é
+pré-rolada assim que tem um quadro decodificável (`engine.preroll`: `play()` a
+0,08x com `pause()` enfileirado — o quadro anda menos de meio frame antes da
+pausa pousar, nada muda na tela) e de novo ao entrar na janela de 3 s antes da
+fronteira, se a anterior tem mais de 10 s. Conta em `pr` no `?diag=1`.
+
 ## Verificação sem aparelho
 
 O painel de navegador do ambiente de desenvolvimento não dispara

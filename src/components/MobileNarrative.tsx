@@ -939,7 +939,20 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
        */
       const from = engines[active];
       const to = engines[i];
-      if (from && to && i !== active) to.seedVelocity(from.velocity());
+      if (from && to && i !== active) {
+        to.seedVelocity(from.velocity());
+        /**
+         * And PARK the outgoing one. Its target stops being written the moment
+         * it leaves the screen, so its velocity estimate would otherwise stay
+         * frozen at whatever the scroll was doing at the cut — "advancing",
+         * for ever — and an engine that believes it is advancing keeps a
+         * hidden track in the play path: past its last frame, into `ended`,
+         * and around a play/seek loop the engine guards against but should
+         * never be asked to. At zero velocity it converges on its last frame
+         * and pauses, which is what a parked track is.
+         */
+        from.seedVelocity(0);
+      }
       active = i;
       gate = null;
       paintFor(i, target, true);

@@ -343,6 +343,20 @@ segundo; `pc` é o total de `play()`. Rolando a uma velocidade constante, `pp`
 deve ficar em 0 ou 1 e `fps` perto de 24 × a taxa. `pp` alto com `fps` baixo é
 o ciclo; `fps` baixo com `pp` baixo é o frame que não chega (seek ou decode).
 
+**A faixa estacionada (cena 01 perfeita, as outras não).** Depois da primeira
+troca existe algo que na cena 01 não existe: a cena anterior, oculta, parada no
+último frame com o vídeo em `ended`. O alvo dela para de ser escrito no
+instante em que sai da tela, então a estimativa de velocidade do motor ficava
+congelada no valor do corte — "avançando", para sempre. Com a zona morta, um
+motor que se acha avançando mantém a faixa no caminho de play: `play()` num
+vídeo terminado o reinicia do zero (é a spec), o motor corrige com um seek até
+o fim, o vídeo termina de novo, e isso vira um loop de play/seek invisível no
+fundo de toda cena depois da primeira, disputando decodificador com a cena
+visível. Duas correções: `show()` zera a velocidade da faixa de saída
+(`seedVelocity(0)`), que então converge no último frame e pausa; e o motor nunca
+dá `play()` em elemento `ended` — fica ocioso, e os ramos de seek o trazem de
+volta se a história retornar a ele.
+
 **O arranque frio das cenas 02–04.** Com o ciclo resolvido, a cena 01 ficou
 limpa e as outras não. A diferença é onde cada uma paga o primeiro `play()` de
 um elemento recém-carregado: no iOS ele custa o preroll do AVPlayer, 100 a

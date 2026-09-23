@@ -536,6 +536,21 @@ function tick() {
       continue;
     }
 
+    // An element that has ENDED is parked, never played. play() on an ended
+    // element restarts it from zero — that is the spec — and this engine would
+    // then chase its own restart with a seek to the end, where it ends again:
+    // a play/seek loop, invisible because the element is hidden, running in
+    // the background of every scene after the first. The outgoing track of
+    // a handover lands here by design (parked on its last frame, the video
+    // run out under it), and its frozen velocity kept it inside the dead
+    // zone above rather than in the hold. Idle, and the seek branches above
+    // still bring it back if the story ever returns to it.
+    if (v.ended) {
+      requestPause(s);
+      s.mode = "idle";
+      continue;
+    }
+
     // Forward and close: let the decoder do what it is good at. Playing keeps
     // it in streaming mode at a real 24fps instead of paying seek latency per
     // frame, and the rate eases toward 1 as the gap closes, which is what gives

@@ -11,7 +11,7 @@ import {
   MOBILE_SEGMENTS,
 } from "../content/timeline";
 import { REFRESH_JOURNEY } from "../lib/scrollOrder";
-import { createScrubEngine, FORWARD_SEEK_GAP, type ScrubEngine } from "../lib/scrubEngine";
+import { createScrubEngine, type ScrubEngine } from "../lib/scrubEngine";
 
 /**
  * The journey on a phone: one pinned frame, the scroll driving global time.
@@ -228,8 +228,55 @@ const seamOn =
  * is PINNED: nothing on screen tracks the finger one-to-one, so there is no
  * direct-manipulation contract to break. The only feedback a gesture has here
  * is the film advancing, which is precisely the thing being metered.
+ *
+ * A BAND, NOT A CEILING. Desktop meters the wheel with a ceiling (the budget)
+ * and a floor (a wheel notch always advances at least three frames). This
+ * governor has both too, and on a phone they are deliberately CLOSE: while
+ * the visitor is asking for movement the film advances at a story rate
+ * between GOVERNOR_MIN_RATE and GOVERNOR_MAX_RATE, whatever the finger's own
+ * speed — a slow drag does not crawl frame by frame and a fling does not
+ * sprint. The finger decides how LONG the film moves (it fills the backlog);
+ * the band decides how FAST. That is the request from the handset, and it is
+ * also what the decoder wants: a playbackRate that barely changes is the one
+ * thing AVPlayer presents without a hitch, where a rate that follows every
+ * wobble of a thumb is rewritten many times a second and pays for each one.
+ *
+ * Where in the band: proportional to how full the backlog is. A fling banks
+ * the cap and plays out at the top; as the bank drains the rate eases toward
+ * the floor, which reads as momentum settling rather than a cut-off.
+ *
+ * THE NUMBERS ARE CADENCE, NOT TASTE. 24 fps footage on a 60 Hz panel judders
+ * at most rates — 1x is the classic 2:3 pulldown — and on a 120 Hz one at
+ * most rates too. 1.25x is 30 fps: exactly two refreshes per frame at 60 Hz,
+ * exactly four at 120, the one rate above real time that both panels present
+ * evenly. It is the floor, so it is where a deliberate scroll spends its
+ * time. The ceiling is only a little above it, as asked; the rates between
+ * are uneven on both panels, which is the argument for keeping the band
+ * narrow rather than for any particular top. `?gmin=` and `?gmax=` override
+ * both in the deployed build, since this is tuned by feel on the device.
  */
-const GOVERNOR_FRACTION = 1.0;
+const GOVERNOR_MIN_RATE = 1.25;
+const GOVERNOR_MAX_RATE = 1.6;
+
+/**
+ * The floor in STORY FRAMES for a single gesture — the desktop's
+ * GOVERNOR_MIN_STEP_FRAMES, same reasoning: a touch delta of a few pixels is
+ * a fraction of one frame, and a picture that does not change under a moving
+ * finger reads as the page being heavy. Applied to the pending TOTAL, never
+ * per event, for the reason recorded on desktop: per-event inflation turns a
+ * stream of small deltas into thousands of pixels of demand.
+ */
+const GOVERNOR_MIN_STEP_FRAMES = 3;
+
+/**
+ * Ceiling on the backlog, in seconds of STORY. A fling banks at most this
+ * much and coasts it out inside the band — about a second of wall clock at
+ * the top of the band. Comfortably under the scrub engine's FORWARD_SEEK_GAP
+ * (1.5 s) once the engine's own 2x ceiling is allowed for: the picture is
+ * always able to catch a target that moves at GOVERNOR_MAX_RATE by playing,
+ * so a coast never turns into a seek.
+ */
+const GOVERNOR_BACKLOG_S = 1.5;
 
 /**
  * Hard cap on the story rate the governor will permit, ABOVE what the refresh
@@ -254,42 +301,27 @@ const GOVERNOR_FRACTION = 1.0;
  */
 const MOBILE_RATE_CEILING = 2;
 
-/**
- * Ceiling on the backlog, as a share of the scrub engine's forward-seek gap.
- *
- * Not a free number, and the previous 0.9 seconds was: banked story seconds
- * come out as rateCeiling x this value, so 0.9 let a single swipe bank
- * 2.5 x 0.9 = 2.25 s of story on a 60 Hz phone and 2.7 s on a 120 Hz one.
- * FORWARD_SEEK_GAP is 1.5 s. Every fast swipe therefore handed the scrub
- * engine a gap it is documented to answer by seeking rather than playing —
- * the governor was reliably pushing the picture onto the expensive path it
- * exists to keep it off.
- *
- * Expressed against that gap instead, so the two cannot drift apart: the
- * banked surplus stays at 2/3 of the distance the engine will still absorb by
- * playing. At the 2x ceiling above that is 0.5 s of scrolling — a swipe still
- * coasts, it just cannot coast past the point where coasting turns into a
- * jump.
- */
-const GOVERNOR_BACKLOG_OF_SEEK_GAP = 2 / 3;
-
 /** Refresh rates outside this band are a bad measurement, not a real display. */
 const REFRESH_MIN_HZ = 50;
 const REFRESH_MAX_HZ = 240;
 const REFRESH_FALLBACK_HZ = 60;
 
 /**
- * `?governor=off` restores the raw gesture; `?governor=0.8` scales the budget,
- * matching the numeric override CanvasNarrative already accepts.
- *
- * The numeric form exists because this is the one tuning number that cannot be
- * settled from a desk: it is bounded by the decoder in the visitor's hand, and
- * phones differ by more than desktops do. Comparing two values on the actual
- * device is a query string rather than a rebuild.
+ * `?governor=off` restores the raw gesture; `?gmin=1.25&gmax=1.6` set the
+ * band. All three work in the deployed build, because the band is the one
+ * tuning that cannot be settled from a desk: it is judged by feel, on the
+ * decoder in the visitor's hand, and phones differ by more than desktops do.
+ * Comparing two values on the actual device is a query string rather than a
+ * rebuild.
  */
-const governorParam =
-  typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("governor") : null;
-const governorFraction = Number(governorParam) || GOVERNOR_FRACTION;
+const query = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+const governorParam = query?.get("governor") ?? null;
+const bandParam = (name: string, fallback: number) => {
+  const v = Number(query?.get(name));
+  return Number.isFinite(v) && v >= 1 && v <= MOBILE_RATE_CEILING ? v : fallback;
+};
+const governorMinRate = bandParam("gmin", GOVERNOR_MIN_RATE);
+const governorMaxRate = Math.max(governorMinRate, bandParam("gmax", GOVERNOR_MAX_RATE));
 
 /**
  * iOS is WebKit driving the scroll from the compositor, which is why the
@@ -492,21 +524,23 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
 
     /** Pixels of scrolling that equal one second of story, from the runway. */
     const pxPerStorySecond = () => (MOBILE_SCROLL_VH_PER_SECOND / 100) * window.innerHeight;
+    /** Pixels of scrolling that equal one frame of story — the unit of the floor. */
+    const pxPerStoryFrame = () => pxPerStorySecond() / FPS;
+
+    /** Pixels of banked gesture the governor will hold — see GOVERNOR_BACKLOG_S. */
+    const backlogCap = () => GOVERNOR_BACKLOG_S * pxPerStorySecond();
 
     /**
-     * Pixels per second the page may scroll: the sustainable story rate times
-     * the runway. Derived rather than fixed, so a longer runway automatically
-     * permits more scrolling.
+     * Pixels per second the page may scroll right now: the band, placed by how
+     * full the backlog is (see GOVERNOR_MIN_RATE), times the runway. Never above
+     * what the engine can chase by playing, so the coast stays off the seek
+     * path even if a query string asks for more.
      */
-    const governorBudget = () => rateCeiling() * governorFraction * pxPerStorySecond();
-
-    /**
-     * Pixels of banked gesture the governor will hold. Expressed through the
-     * scrub engine's own threshold so the two stay tied together — see
-     * GOVERNOR_BACKLOG_OF_SEEK_GAP.
-     */
-    const backlogCap = () =>
-      FORWARD_SEEK_GAP * GOVERNOR_BACKLOG_OF_SEEK_GAP * pxPerStorySecond();
+    const governorRate = () => {
+      const fill = Math.min(1, Math.abs(backlog) / backlogCap());
+      const rate = governorMinRate + (governorMaxRate - governorMinRate) * fill;
+      return Math.min(rate, rateCeiling()) * pxPerStorySecond();
+    };
 
     /**
      * The gesture, swallowed. Enabled only while the film owns the screen — the
@@ -551,8 +585,19 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           // become a click; Observer re-dispatches it on a release that did
           // not drag, which is what keeps the hero's links tappable.
           allowClicks: true,
+          // Observer's default drag tolerance is 10 px, which is more than a
+          // deliberate nudge travels; below it nothing reaches onChange and
+          // the floor has nothing to top up. 4 px is above finger tremor and
+          // matches the 3 px past which Observer stops treating a release as
+          // a tap, so a tap stays a tap and anything larger is a gesture.
+          tolerance: 4,
           onChangeY: (self) => {
             backlog += -self.deltaY;
+            // The floor raises the pending TOTAL to one visible step — see
+            // GOVERNOR_MIN_STEP_FRAMES. A gesture already above it is left at
+            // its own true size.
+            const floor = GOVERNOR_MIN_STEP_FRAMES * pxPerStoryFrame();
+            if (backlog !== 0 && Math.abs(backlog) < floor) backlog = Math.sign(backlog) * floor;
           },
         });
     observer?.disable();
@@ -860,10 +905,9 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
     const drive = (_time: number, deltaMs: number) => {
       // Release whatever the gesture asked for, at the governed rate.
       if (journeyActive && backlog !== 0) {
-        const budget = governorBudget();
         const cap = backlogCap();
         if (Math.abs(backlog) > cap) backlog = Math.sign(backlog) * cap;
-        const step = Math.sign(backlog) * Math.min(Math.abs(backlog), (budget * deltaMs) / 1000);
+        const step = Math.sign(backlog) * Math.min(Math.abs(backlog), (governorRate() * deltaMs) / 1000);
         backlog -= step;
         // Under a pixel is beneath what a scroll call can express; keep it for
         // the next tick instead of losing it to rounding.
@@ -1005,9 +1049,13 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         const lines: string[] = [];
         lines.push(`scroll ${Math.round(window.scrollY)}  alvo f${t.toFixed(1)}/${MOBILE_GLOBAL_FRAMES - 1}`);
         lines.push(
-          `cena ${index + 1} local f${local}  ativa ${active + 1}  gov ${governorOff ? "off" : governorFailed ? "auto-off" : "on"}`,
+          `cena ${index + 1} local f${local}  ativa ${active + 1}  gov ${governorOff ? "off" : governorFailed ? "auto-off" : "on"} ` +
+            `${governorMinRate.toFixed(2)}-${governorMaxRate.toFixed(2)}x`,
         );
-        lines.push(`pin ${journeyActive ? "sim" : "nao"}  backlog ${Math.round(backlog)}`);
+        lines.push(
+          `pin ${journeyActive ? "sim" : "nao"}  backlog ${Math.round(backlog)}px ` +
+            `(${(Math.abs(backlog) / pxPerStorySecond()).toFixed(2)}s) taxa ${(governorRate() / pxPerStorySecond()).toFixed(2)}x`,
+        );
         // Background fetch per track: percent in, and L once the element has
         // been switched to its local copy.
         lines.push(

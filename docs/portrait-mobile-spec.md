@@ -271,6 +271,28 @@ de scroll que não pousam por meio segundo e desliga o governador sozinho —
 `gov auto-off` no `?diag=1`. `?governor=off` agora funciona também na build
 publicada, para comparar no aparelho.
 
+**Uma faixa, não um teto.** O desktop mede a roda com um teto (o orçamento) e
+um piso (uma dentada da roda avança no mínimo três frames). O governador de
+toque tem os dois, e no celular eles são propositalmente **próximos**:
+enquanto o visitante pede movimento, o filme avança a uma taxa de história
+entre `GOVERNOR_MIN_RATE` (1,25x) e `GOVERNOR_MAX_RATE` (1,6x), qualquer que
+seja a velocidade do dedo. Um arrasto lento não anda frame a frame; um
+arremesso não dispara. O dedo decide por quanto tempo o filme anda (enche o
+backlog, até 1,5 s de história); a faixa decide a que velocidade — a posição
+dentro dela é proporcional ao quanto o backlog está cheio, então um arremesso
+sai no topo e assenta para o piso, o que lê como inércia. É o que foi pedido
+do aparelho, e é também o que o decodificador quer: uma `playbackRate` que
+quase não muda é a única coisa que o AVPlayer apresenta sem tropeço.
+
+Os números são cadência, não gosto: 24 fps num painel de 60 Hz tremem na
+maioria das taxas (1x é o clássico 2:3), e num de 120 Hz também. 1,25x é 30 fps
+— exatamente dois refreshes por frame a 60 Hz e quatro a 120 —, a única taxa
+acima do tempo real que os dois painéis apresentam por igual; por isso é o
+piso, onde um scroll deliberado passa o tempo. `?gmin=1.25&gmax=1.6` sobrepõe
+os dois na build publicada, para ajustar por sensação no aparelho; a segunda
+linha do `?diag=1` mostra a faixa em vigor, o backlog em segundos de história e
+a taxa de liberação do momento.
+
 ## iOS: "gaps" de frames — o ciclo pausa/play
 
 Com as cenas carregando, o relato seguinte foi de travamentos e saltos de

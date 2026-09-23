@@ -103,12 +103,34 @@ const LEAD_MAX_FRAMES = 12;
 const LEAD_DEAD_ZONE_FRAMES = 1;
 
 /**
- * playbackRate is rewritten only when it moves by more than this. The rate
- * formula produces a slightly different number every tick, and a rate write
- * is not free on every player — iOS re-times the pipeline on each one. Four
- * hundredths is below anything the eye can read off a 24 fps picture.
+ * playbackRate is rewritten only when it moves by more than this, and then
+ * no more often than RATE_WRITE_INTERVAL_MS apart unless the change is
+ * RATE_WRITE_URGENT or larger. The rate formula produces a slightly different
+ * number every tick, and a rate write is not free on every player — iOS
+ * re-times the AVPlayer pipeline on each one, and a pipeline re-timed several
+ * times a second shows it as a hitch each time. Between writes the position
+ * error simply accumulates a little (a fraction of a frame at these rates),
+ * and the next write takes it back up; that is invisible where the writes
+ * were not.
  */
 const RATE_WRITE_HYSTERESIS = 0.04;
+const RATE_WRITE_INTERVAL_MS = 250;
+const RATE_WRITE_URGENT = 0.3;
+
+/**
+ * CADENCE. 24 fps footage presents evenly on a phone only at rates where the
+ * panel's refresh divides the frame period: 1.25x is 30 fps — exactly two
+ * refreshes per frame at 60 Hz and four at 120 Hz — and it is the only rate
+ * above real time that both panels share. Every rate near it is uneven (a
+ * 1-2-1-2 pattern of refreshes per frame), which the eye reads as a picture
+ * that stumbles. So a demanded rate within CADENCE_SNAP of it is written as
+ * exactly 1.25: the position error that a small mismatch accumulates is
+ * corrected by the gap term of the rate formula, which pushes the demand
+ * outside the window only after a fraction of a frame has drifted, and
+ * corrects it in one write rather than a hundred.
+ */
+const CADENCE_RATE = 1.25;
+const CADENCE_SNAP = 0.1;
 
 /** A seek slower than this counts against the health score used for tier fallback. */
 const SLOW_SEEK_MS = 220;
@@ -180,6 +202,8 @@ export type ScrubStats = {
    * arriving.
    */
   playCalls: number;
+  /** playbackRate writes actually made — see RATE_WRITE_HYSTERESIS. */
+  rateWrites: number;
   /** Seeks the watchdog gave up waiting for — see SEEK_WATCHDOG_MS. */
   seekTimeouts: number;
   /** Times prime() actually asked the element to fetch — see prime. */
@@ -252,6 +276,15 @@ export type ScrubEngine = {
    * was actually issued, so the caller can keep asking until one is.
    */
   preroll: () => boolean;
+  /**
+   * Forget a standing play() refusal. A hidden track's pre-roll may be
+   * refused where a visible one's play() would not be (a platform that will
+   * not start invisible video), and the refusal would otherwise keep the
+   * engine seek-driven for up to PLAY_RETRY_MS after the track comes on
+   * screen — the first two seconds of a scene spent on the expensive path.
+   * Called at the handover; if play() is refused again it blocks again.
+   */
+  retryPlay: () => void;
   stats: () => ScrubStats;
   destroy: () => void;
 };
@@ -303,6 +336,8 @@ type EngineState = {
   lastSeekEndedAt: number;
   /** When prime() last asked — rate-limits it to PLAY_RETRY_MS. */
   lastPrimeAt: number;
+  /** When playbackRate was last written — see RATE_WRITE_INTERVAL_MS. */
+  lastRateWriteAt: number;
 };
 
 export type ScrubOptions = {
@@ -564,8 +599,17 @@ function tick() {
      */
     const floor = delta > TAIL_FLOOR_FRAMES * FRAME ? 1 : RATE_MIN;
     const feedForward = advancing ? s.velocity : 0;
-    const rate = clamp(feedForward + delta / RATE_TIME_CONSTANT, floor, s.rateCeiling());
-    if (Math.abs(v.playbackRate - rate) > RATE_WRITE_HYSTERESIS) v.playbackRate = rate;
+    let rate = clamp(feedForward + delta / RATE_TIME_CONSTANT, floor, s.rateCeiling());
+    if (Math.abs(rate - CADENCE_RATE) < CADENCE_SNAP) rate = CADENCE_RATE;
+    const change = Math.abs(v.playbackRate - rate);
+    if (
+      change > RATE_WRITE_HYSTERESIS &&
+      (change >= RATE_WRITE_URGENT || now - s.lastRateWriteAt >= RATE_WRITE_INTERVAL_MS)
+    ) {
+      v.playbackRate = rate;
+      s.lastRateWriteAt = now;
+      s.stats.rateWrites += 1;
+    }
     // A pause queued behind a play() that has not settled yet is a pause this
     // engine no longer wants: the tick that queued it has been superseded by
     // this one, which wants the picture moving. Left in place it would land
@@ -600,6 +644,7 @@ export function createScrubEngine(
     playBlockedUntil: 0,
     lastSeekEndedAt: 0,
     lastPrimeAt: 0,
+    lastRateWriteAt: 0,
     stats: {
       seekRequests: 0,
       seeksCompleted: 0,
@@ -612,6 +657,7 @@ export function createScrubEngine(
       playRejects: 0,
       lastPlayError: "",
       playCalls: 0,
+      rateWrites: 0,
       seekTimeouts: 0,
       primes: 0,
     },
@@ -698,6 +744,7 @@ export function createScrubEngine(
       state.playBlockedUntil = 0;
       state.lastSeekEndedAt = 0;
       state.lastPrimeAt = 0;
+      state.lastRateWriteAt = 0;
       boundVideo = el;
       el.addEventListener("seeked", onSeeked);
       el.addEventListener("emptied", onEmptied);
@@ -729,6 +776,9 @@ export function createScrubEngine(
     },
     isReady: () => video.readyState >= 3,
     prime: () => primeElement(state),
+    retryPlay: () => {
+      state.playBlockedUntil = 0;
+    },
     preroll: () => {
       if (state.playPending || !state.video.paused) return false;
       // At the floor rate the queued pause lands before half a frame has

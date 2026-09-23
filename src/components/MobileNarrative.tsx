@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { gsap, Observer, ScrollTrigger } from "../lib/gsap";
 import {
   FPS,
@@ -256,7 +257,7 @@ const seamOn =
  * both in the deployed build, since this is tuned by feel on the device.
  */
 const GOVERNOR_MIN_RATE = 1.25;
-const GOVERNOR_MAX_RATE = 1.6;
+const GOVERNOR_MAX_RATE = 1.4;
 
 /**
  * The floor in STORY FRAMES for a single gesture — the desktop's
@@ -399,11 +400,22 @@ const GOVERNOR_STUCK_LANDED_SHARE = 0.2;
  *
  * A fling can still put the wanted frame far ahead of the shown one, and a
  * film that then plays for twenty seconds to catch up is a hostage situation.
- * Past this many seconds of story the shown frame is jumped to that distance
- * behind the wanted one — one cut, which the engine answers with one seek —
- * and the band takes it from there.
+ * So once the SCROLL HAS COME TO REST, a lag past this many seconds of story
+ * is closed by one jump to that distance behind the wanted frame — one cut,
+ * which the engine answers with one seek — and the band plays the rest.
+ *
+ * Only once at rest, and that is the whole point. The first version jumped
+ * whenever the lag exceeded the cap, which meant that under a native fling
+ * the shown frame, pinned at the cap behind a wanted frame still racing, was
+ * dragged along at the fling's own speed: the limiter had re-coupled the
+ * film to the scroll it exists to decouple it from, and the film sprinted
+ * exactly when it was supposed not to. While the wanted frame moves, the
+ * shown one moves at the band's top and nothing else, however far behind it
+ * falls.
  */
 const FILM_LAG_CAP_S = 3;
+/** Wanted-frame speed, in frames per second, below which the scroll counts as at rest. */
+const FILM_SETTLED_FPS = 2;
 
 /** Data Saver: no background fetch, the tracks stream as they did before. */
 const SAVE_DATA =
@@ -616,6 +628,9 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
     let landedTotal = 0;
     /** The frame the film is actually handed — see FILM_LAG_CAP_S. */
     let shownFrame = 0;
+    /** The wanted frame last tick and its smoothed speed, for the at-rest test. */
+    let wantedPrev = 0;
+    let wantedFps = 0;
 
     const observer = governorOff
       ? null
@@ -941,6 +956,9 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       const to = engines[i];
       if (from && to && i !== active) {
         to.seedVelocity(from.velocity());
+        // A refusal collected while hidden must not decide how the track
+        // starts on screen — see engine.retryPlay.
+        to.retryPlay();
         /**
          * And PARK the outgoing one. Its target stops being written the moment
          * it leaves the screen, so its velocity estimate would otherwise stay
@@ -1020,15 +1038,21 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       // more than the top of the band, whatever the scroll did — see
       // FILM_LAG_CAP_S. `?governor=off` switches this off with the rest.
       const wanted = targetFrameRef.current;
+      if (deltaMs > 0) {
+        const instant = ((wanted - wantedPrev) * 1000) / deltaMs;
+        wantedFps = wantedFps * 0.7 + instant * 0.3;
+      }
+      wantedPrev = wanted;
       if (governorOff) shownFrame = wanted;
       else {
         const maxStep = (governorMaxRate * FPS * deltaMs) / 1000;
         const capFrames = FILM_LAG_CAP_S * FPS;
+        const atRest = Math.abs(wantedFps) < FILM_SETTLED_FPS;
         if (wanted > shownFrame) {
-          if (wanted - shownFrame > capFrames) shownFrame = wanted - capFrames;
+          if (atRest && wanted - shownFrame > capFrames) shownFrame = wanted - capFrames;
           shownFrame = Math.min(wanted, shownFrame + maxStep);
         } else if (wanted < shownFrame) {
-          if (shownFrame - wanted > capFrames) shownFrame = wanted + capFrames;
+          if (atRest && shownFrame - wanted > capFrames) shownFrame = wanted + capFrames;
           shownFrame = Math.max(wanted, shownFrame - maxStep);
         }
       }
@@ -1125,6 +1149,25 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           pps: Math.round((plays - h[0].plays) / dt),
         };
       };
+      /**
+       * The last DIAG_LOG_SAMPLES readouts, kept so one tap on the panel
+       * copies the whole recent history — a scene change and the seconds
+       * around it — instead of the single instant a screenshot catches.
+       */
+      const DIAG_LOG_SAMPLES = 48;
+      const log: string[] = [];
+      let copiedUntil = 0;
+      const panel = diagRef.current;
+      if (panel) {
+        panel.onclick = () => {
+          const text = log.join("\n---\n");
+          const done = () => {
+            copiedUntil = performance.now() + 1500;
+          };
+          if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done, done);
+          else done();
+        };
+      }
       const sample = () => {
         const el = diagRef.current;
         if (!el) return;
@@ -1170,13 +1213,20 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           lines.push(
             `v${i + 1}${adopted[i] ? "L" : onNetwork[i] ? "N" : ""} rs${v.readyState} ns${v.networkState} pre${v.preload.charAt(0)} buf${buffered} ` +
               `t${v.currentTime.toFixed(2)} ${v.paused ? "pause" : "play"} r${v.playbackRate.toFixed(2)} ` +
-              `${e?.mode() ?? "-"} fps${rate.fps} pp${rate.pps} pc${st?.playCalls ?? 0} rej${st?.playRejects ?? 0} pr${st?.primes ?? 0} ` +
+              `${e?.mode() ?? "-"} fps${rate.fps} pp${rate.pps} pc${st?.playCalls ?? 0} rw${st?.rateWrites ?? 0} rej${st?.playRejects ?? 0} pr${st?.primes ?? 0} ` +
               `sk${st?.seeksCompleted ?? 0}/${st?.avgSeekMs ?? 0}ms to${st?.seekTimeouts ?? 0} ${err}`,
           );
         });
         const anyRej = engines.find((e) => (e?.stats().playRejects ?? 0) > 0);
         if (anyRej) lines.push(`ULTIMO ERRO DE PLAY: ${anyRej.stats().lastPlayError}`);
-        el.textContent = lines.join(String.fromCharCode(10));
+        const text = lines.join(String.fromCharCode(10));
+        log.push(`${new Date().toISOString().slice(11, 23)}\n${text}`);
+        if (log.length > DIAG_LOG_SAMPLES) log.shift();
+        const hint =
+          performance.now() < copiedUntil
+            ? "COPIADO — cole no chat"
+            : "toque aqui para copiar os ultimos 12 s";
+        el.textContent = `${hint}\n${text}`;
       };
       sample();
       diagTimer = window.setInterval(sample, 250);
@@ -1386,12 +1436,18 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           </div>
         )}
       </div>
-      {diagOn && (
-        <pre
-          ref={diagRef}
-          className="pointer-events-none fixed left-0 top-0 z-[60] m-0 max-w-full whitespace-pre-wrap bg-black/80 p-1.5 font-mono text-[9px] leading-[1.35] text-lime-300"
-        />
-      )}
+      {diagOn &&
+        createPortal(
+          <pre
+            ref={diagRef}
+            // Tappable: one tap copies the recent readout history to the
+            // clipboard — see the diag block in the effect. Portalled to
+            // <body>: inside the pinned section it sits in that section's
+            // stacking context, under the navbar, and a tap lands on the logo.
+            className="pointer-events-auto fixed left-0 top-0 z-[1000] m-0 max-w-full cursor-pointer whitespace-pre-wrap bg-black/80 p-1.5 font-mono text-[9px] leading-[1.35] text-lime-300"
+          />,
+          document.body,
+        )}
     </section>
   );
 }

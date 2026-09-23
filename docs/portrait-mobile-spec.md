@@ -307,6 +307,21 @@ terceira linha mostra `toques` (deltas de toque recebidos), `liberado` e
 `pousou` (px escritos e px observados), `stuck` (janelas seguidas presas), e
 `filme`/`atraso` (o frame mostrado e quanto ele está atrás do pedido).
 
+**Três fontes de "gap" que sobraram, e o que fecha cada uma.** (1) O limitador
+do filme saltava sempre que o atraso passava de 3 s, e sob um arremesso
+nativo isso o prendia a 3 s atrás de um pedido ainda correndo — o filme era
+arrastado na velocidade do arremesso, reacoplado ao scroll de que devia se
+desacoplar. Agora o salto só acontece com o scroll em repouso (`FILM_SETTLED_FPS`);
+enquanto o pedido se move, o filme anda no topo da faixa e nada mais, por mais
+que fique para trás. (2) `playbackRate` era reescrita várias vezes por
+segundo, e o AVPlayer re-temporiza o pipeline a cada escrita; agora no máximo
+uma a cada 250 ms, salvo mudanças de 0,3 ou mais (`rw` no `?diag=1` conta as
+escritas). (3) Cadência: taxas entre 1,25x e 1,6x apresentam 24 fps de forma
+irregular a 60 Hz; a faixa passou a 1,25–1,4x e o motor escreve exatamente
+1,25 sempre que a demanda está a menos de 0,1 disso — 30 fps, dois refreshes
+por frame a 60 Hz e quatro a 120 Hz. O erro de posição que a pequena diferença
+acumula é corrigido numa escrita só quando passa de uma fração de frame.
+
 Os números são cadência, não gosto: 24 fps num painel de 60 Hz tremem na
 maioria das taxas (1x é o clássico 2:3), e num de 120 Hz também. 1,25x é 30 fps
 — exatamente dois refreshes por frame a 60 Hz e quatro a 120 —, a única taxa

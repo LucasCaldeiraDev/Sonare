@@ -118,7 +118,8 @@ const scenarios = {
 
 function parse(diag) {
   const lines = (diag || "").split("\n");
-  const m = /cena (\d+) local f(\d+)\s+ativa (\d+)/.exec(lines[1] || "");
+  // Found by prefix, not by index: the readout carries a hint line on top.
+  const m = /cena (\d+) local f(\d+)\s+ativa (\d+)/.exec(lines.find((l) => l.startsWith("cena ")) || "");
   const vids = lines
     .filter((l) => /^v\d/.test(l))
     .map((l) => {
@@ -177,6 +178,18 @@ async function run(name) {
   await page.waitForTimeout(1500);
 
   const diag = async () => parse(await page.evaluate(() => document.querySelector("pre")?.textContent));
+  // The film deliberately trails a scroll that outruns the band (see
+  // FILM_LAG_CAP_S in MobileNarrative), so after each leg wait for the
+  // readout's `atraso` to reach zero before sampling, up to a limit.
+  const settle = async (maxMs = 8000) => {
+    const t = Date.now();
+    for (;;) {
+      const text = await page.evaluate(() => document.querySelector("pre")?.textContent);
+      const lag = +(/atraso ([\d.-]+)s/.exec(text || "") || [])[1];
+      if (!(Math.abs(lag) > 0.02) || Date.now() - t > maxMs) return;
+      await page.waitForTimeout(200);
+    }
+  };
   const samples = [];
   const t0 = Date.now();
 
@@ -190,6 +203,8 @@ async function run(name) {
     if (Math.round(y / 40) % 10 === 0) samples.push({ y, ms: Date.now() - t0, ...(await diag()) });
   }
   await page.waitForTimeout(1500);
+  await settle();
+  samples.push({ y, ms: Date.now() - t0, ...(await diag()) });
 
   // Then back up to the middle of scene 02 — the seek path, the expensive one.
   const back = Math.round(PIN_PX * 0.4);
@@ -199,6 +214,7 @@ async function run(name) {
     await page.waitForTimeout(50);
   }
   await page.waitForTimeout(1500);
+  await settle();
   const end = { y, ms: Date.now() - t0, ...(await diag()) };
   samples.push(end);
 

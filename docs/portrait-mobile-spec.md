@@ -284,6 +284,29 @@ sai no topo e assenta para o piso, o que lê como inércia. É o que foi pedido
 do aparelho, e é também o que o decodificador quer: uma `playbackRate` que
 quase não muda é a única coisa que o AVPlayer apresenta sem tropeço.
 
+**Dois limitadores, e por quê.** O governador de scroll mede o *gesto*: ele
+precisa possuir o toque, escrever o scroll e ter a página obedecendo — três
+coisas em que o WebKit do celular dá palpite, e o aparelho seguiu rolando sem
+limite enquanto as três funcionavam em emulação. Então a faixa é imposta uma
+segunda vez, no único lugar em que nada de fora interfere: entre o frame que o
+scroll pede e o frame que o filme recebe. `drive` move o frame mostrado em
+direção ao pedido a no máximo `GOVERNOR_MAX_RATE`, faça o scroll o que fizer;
+além de 3 s de história de atraso ele salta para essa distância (um corte, um
+seek) e a faixa segue dali. Quando o governador de scroll funciona, isso é
+passagem direta; quando não, é o limitador que o visitante sente. Não depende
+de nada além do ticker.
+
+O desligamento automático do governador de scroll também mudou de lógica: a
+versão anterior comparava `scrollY` logo após cada `scrollTo` e desistia em
+meio segundo de escritas que "não pousaram" — e no iOS a posição pode ser
+reportada um ou dois frames depois, então esse teste podia desligar o
+governador numa página que se movia perfeitamente. Agora ele soma o quanto foi
+liberado por janela de 1 s e compara com o quanto a página andou; só duas
+janelas seguidas com menos de um quinto pousado desligam. No `?diag=1` a
+terceira linha mostra `toques` (deltas de toque recebidos), `liberado` e
+`pousou` (px escritos e px observados), `stuck` (janelas seguidas presas), e
+`filme`/`atraso` (o frame mostrado e quanto ele está atrás do pedido).
+
 Os números são cadência, não gosto: 24 fps num painel de 60 Hz tremem na
 maioria das taxas (1x é o clássico 2:3), e num de 120 Hz também. 1,25x é 30 fps
 — exatamente dois refreshes por frame a 60 Hz e quatro a 120 —, a única taxa

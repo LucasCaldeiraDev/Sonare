@@ -365,12 +365,45 @@ const isWebKitTouch =
 const governorOff = governorParam === "off";
 
 /**
- * How long the governor may keep writing scroll positions that do not land
- * before it concludes the page is not its to move and stands down. Half a
- * second of a finger dragging a page that does not move is already too long;
- * a single missed write is not evidence of anything.
+ * How the governor decides the page is not its to move, and stands down.
+ *
+ * Judged over whole seconds, never per tick. The first version compared
+ * window.scrollY right after each scrollTo and gave up after half a second of
+ * writes that "did not land" — and on iOS the position a write produces can
+ * be reported a frame or two late, so that test stood the governor down on a
+ * page that was moving perfectly well, and the handset scrolled ungoverned
+ * while the code believed it had tried. Now: over each window, add up how far
+ * the governor released; at the end of it, look at how far the page actually
+ * went. Two consecutive windows in which a real distance was released and
+ * the page covered under a fifth of it is the compositor owning the gesture
+ * (see governorOff). Anything less is noise, or the page's own ends.
  */
-const GOVERNOR_STUCK_MS = 500;
+const GOVERNOR_STUCK_WINDOW_MS = 1000;
+const GOVERNOR_STUCK_WINDOWS = 2;
+const GOVERNOR_STUCK_MIN_RELEASE_PX = 100;
+const GOVERNOR_STUCK_LANDED_SHARE = 0.2;
+
+/**
+ * THE FILM-LEVEL LIMITER, and why there are two.
+ *
+ * The scroll governor above meters the GESTURE: it needs to own the touch,
+ * write the scroll itself and have the page follow — three things WebKit on
+ * a phone has a say in, and the handset kept scrolling ungoverned while every
+ * one of them worked in emulation. So the band is enforced a second time, at
+ * the one place nothing outside this file can interfere with: between the
+ * frame the scroll asks for and the frame the film is handed. `drive` moves
+ * the shown frame toward the wanted one at no more than GOVERNOR_MAX_RATE,
+ * whatever the scroll does. When the scroll governor is working the wanted
+ * frame never outruns the band and this is a pass-through; when it is not,
+ * this is the limiter the visitor feels. It depends on nothing but the ticker.
+ *
+ * A fling can still put the wanted frame far ahead of the shown one, and a
+ * film that then plays for twenty seconds to catch up is a hostage situation.
+ * Past this many seconds of story the shown frame is jumped to that distance
+ * behind the wanted one — one cut, which the engine answers with one seek —
+ * and the band takes it from there.
+ */
+const FILM_LAG_CAP_S = 3;
 
 /** Data Saver: no background fetch, the tracks stream as they did before. */
 const SAVE_DATA =
@@ -571,9 +604,18 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       document.documentElement.style.removeProperty("scroll-behavior");
     };
 
-    /** Set by `drive` once scroll writes stopped landing — see GOVERNOR_STUCK_MS. */
+    /** Set by `drive` once the page stopped following — see GOVERNOR_STUCK_WINDOW_MS. */
     let governorFailed = false;
-    let stuckMs = 0;
+    let stuckWindows = 0;
+    let releasedSinceCheck = 0;
+    let scrollAtCheck = 0;
+    let lastStuckCheckAt = 0;
+    /** Readout counters: touch deltas received, scroll released, scroll observed. */
+    let touchEvents = 0;
+    let releasedTotal = 0;
+    let landedTotal = 0;
+    /** The frame the film is actually handed — see FILM_LAG_CAP_S. */
+    let shownFrame = 0;
 
     const observer = governorOff
       ? null
@@ -592,6 +634,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           // a tap, so a tap stays a tap and anything larger is a gesture.
           tolerance: 4,
           onChangeY: (self) => {
+            touchEvents += 1;
             backlog += -self.deltaY;
             // The floor raises the pending TOTAL to one visible step — see
             // GOVERNOR_MIN_STEP_FRAMES. A gesture already above it is left at
@@ -924,22 +967,34 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
           const want = Math.min(Math.max(before + step, 0), maxScroll);
           window.scrollTo({ top: want, behavior: "instant" });
-          // A write that did not land. One is noise; half a second of them is
-          // the compositor owning a gesture this code thinks it owns, and the
-          // visitor dragging a page that does not move. Stand down for good
-          // rather than keep swallowing the touch — see governorOff. Only a
-          // write that asked for real movement counts: at the page's own
-          // ends there is nothing to land.
-          if (Math.abs(want - before) >= 1 && Math.abs(window.scrollY - before) < 0.5) {
-            stuckMs += deltaMs;
-            if (stuckMs > GOVERNOR_STUCK_MS && observer) {
-              governorFailed = true;
-              observer.kill();
-              release();
-              backlog = 0;
-            }
-          } else stuckMs = 0;
+          releasedSinceCheck += Math.abs(want - before);
+          releasedTotal += Math.abs(want - before);
         } else backlog += step;
+      }
+      // Does the page follow the governor's writes? See GOVERNOR_STUCK_WINDOW_MS
+      // for why this is judged per second and not per tick.
+      if (journeyActive && observer && !governorFailed) {
+        const now = performance.now();
+        if (!lastStuckCheckAt) {
+          lastStuckCheckAt = now;
+          scrollAtCheck = window.scrollY;
+        } else if (now - lastStuckCheckAt >= GOVERNOR_STUCK_WINDOW_MS) {
+          const moved = Math.abs(window.scrollY - scrollAtCheck);
+          landedTotal += moved;
+          const stuck =
+            releasedSinceCheck >= GOVERNOR_STUCK_MIN_RELEASE_PX &&
+            moved < releasedSinceCheck * GOVERNOR_STUCK_LANDED_SHARE;
+          stuckWindows = stuck ? stuckWindows + 1 : 0;
+          if (stuckWindows >= GOVERNOR_STUCK_WINDOWS) {
+            governorFailed = true;
+            observer.kill();
+            release();
+            backlog = 0;
+          }
+          releasedSinceCheck = 0;
+          scrollAtCheck = window.scrollY;
+          lastStuckCheckAt = now;
+        }
       }
       // iOS reports TouchEvent.clientY wildly wrong at a scroll of exactly 0
       // (normalizeScroll works around the same bug); one pixel in is invisible
@@ -948,7 +1003,23 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         window.scrollTo({ top: 1, behavior: "instant" });
       }
 
-      const target = targetFrameRef.current;
+      // The film-level limiter: the shown frame follows the wanted one at no
+      // more than the top of the band, whatever the scroll did — see
+      // FILM_LAG_CAP_S. `?governor=off` switches this off with the rest.
+      const wanted = targetFrameRef.current;
+      if (governorOff) shownFrame = wanted;
+      else {
+        const maxStep = (governorMaxRate * FPS * deltaMs) / 1000;
+        const capFrames = FILM_LAG_CAP_S * FPS;
+        if (wanted > shownFrame) {
+          if (wanted - shownFrame > capFrames) shownFrame = wanted - capFrames;
+          shownFrame = Math.min(wanted, shownFrame + maxStep);
+        } else if (wanted < shownFrame) {
+          if (shownFrame - wanted > capFrames) shownFrame = wanted + capFrames;
+          shownFrame = Math.max(wanted, shownFrame - maxStep);
+        }
+      }
+      const target = shownFrame;
       const { index, local } = locate(Math.floor(target));
       // Keep the fractional part: the engine quantizes to whole frames itself,
       // and handing it the rounded value first would quantize twice.
@@ -1055,6 +1126,13 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         lines.push(
           `pin ${journeyActive ? "sim" : "nao"}  backlog ${Math.round(backlog)}px ` +
             `(${(Math.abs(backlog) / pxPerStorySecond()).toFixed(2)}s) taxa ${(governorRate() / pxPerStorySecond()).toFixed(2)}x`,
+        );
+        // Whether the gesture reaches the governor and whether the page obeys
+        // it: touch deltas received, scroll it released, scroll observed over
+        // the same windows, and how many windows in a row looked stuck.
+        lines.push(
+          `toques ${touchEvents}  liberado ${Math.round(releasedTotal)}px  pousou ${Math.round(landedTotal)}px  ` +
+            `stuck ${stuckWindows}  filme f${shownFrame.toFixed(1)} atraso ${((t - shownFrame) / FPS).toFixed(2)}s`,
         );
         // Background fetch per track: percent in, and L once the element has
         // been switched to its local copy.

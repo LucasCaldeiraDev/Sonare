@@ -10,6 +10,25 @@ const links = [
   { label: "Contato", href: "#contato" },
 ];
 
+/**
+ * The logo goes home INSTANTLY, not smoothly.
+ *
+ * The stylesheet gives anchor links `scroll-behavior: smooth`, which is right
+ * for a hop to the next section and wrong for "take me back to the top" from
+ * the bottom of a page whose first 10 000 px are the pinned film: the smooth
+ * scroll traverses the whole runway, on a phone it takes seconds, and the film
+ * scrubs backwards under the navbar the entire way. A home button is a
+ * decision, not a scroll. The hash is cleared rather than set to #inicio so
+ * the browser does not also perform its own (smooth) anchor jump.
+ */
+function goHome(event: React.MouseEvent<HTMLAnchorElement>) {
+  event.preventDefault();
+  window.scrollTo({ top: 0, behavior: "instant" });
+  if (window.location.hash) {
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+  }
+}
+
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -127,7 +146,12 @@ export function Navbar() {
         aria-label="Navegação principal"
         className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8"
       >
-        <a href="#inicio" className="flex items-center gap-3" aria-label={`${brand.name} — início`}>
+        <a
+          href="#inicio"
+          onClick={goHome}
+          className="flex items-center gap-3"
+          aria-label={`${brand.name} — início`}
+        >
           <img src="/brand/sonare-logo-dark.png" alt={brand.name} className="h-8 w-auto" width={800} height={225} />
         </a>
 

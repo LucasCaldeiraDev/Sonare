@@ -331,6 +331,16 @@ da timeline do scroll para uma timeline dirigida pelo frame mostrado
 (`storyTl`), de modo que o encerramento só sobe quando o filme chega de fato
 ao fim, e não sobre um filme ainda a caminho.
 
+**O logo vai para o início na hora.** A folha de estilo dá `scroll-behavior:
+smooth` aos links de âncora, certo para pular à seção seguinte e errado para
+"me leve de volta ao topo" do fim de uma página cujos primeiros 10 000 px são o
+filme pinado: o scroll suave percorre a pista inteira, no celular leva
+segundos, e o filme rebobina embaixo da navbar o caminho todo. O logo agora
+faz `scrollTo` instantâneo (`goHome` em `Navbar.tsx`), e o filme reconhece uma
+navegação pela velocidade do pedido — acima de 20x o tempo real
+(`FILM_SNAP_FPS`) o frame mostrado salta junto em vez de tocar até lá. Nenhum
+gesto sob o governador chega perto disso.
+
 **Dois limitadores, e por quê.** O governador de scroll mede o *gesto*: ele
 precisa possuir o toque, escrever o scroll e ter a página obedecendo — três
 coisas em que o WebKit do celular dá palpite, e o aparelho seguiu rolando sem

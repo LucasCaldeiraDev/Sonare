@@ -465,6 +465,15 @@ const GOVERNOR_STUCK_LANDED_SHARE = 0.2;
 const FILM_CATCH_UP_LAG_S = 3;
 /** Wanted-frame speed, in frames per second, below which the scroll counts as at rest. */
 const FILM_SETTLED_FPS = 2;
+/**
+ * Wanted-frame speed, in frames per second, above which the scroll is not a
+ * gesture but a navigation — the logo going home, an anchor — and the film
+ * SNAPS to it instead of playing its way there. 480 is twenty times real
+ * time: no touch under the governor comes near it (the band tops out at
+ * 1.75x), and even an ungoverned native fling peaks well under it. An
+ * instant scroll produces thousands.
+ */
+const FILM_SNAP_FPS = 480;
 
 /** Data Saver: no background fetch, the tracks stream as they did before. */
 const SAVE_DATA =
@@ -1180,7 +1189,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         wantedFps = wantedFps * 0.7 + instant * 0.3;
       }
       wantedPrev = wanted;
-      if (governorOff) shownFrame = wanted;
+      if (governorOff || Math.abs(wantedFps) > FILM_SNAP_FPS) shownFrame = wanted;
       else {
         // Far behind, catch up at the engine's ceiling; otherwise the band.
         // Never a jump — see FILM_CATCH_UP_LAG_S.
@@ -1627,7 +1636,9 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
             // clipboard — see the diag block in the effect. Portalled to
             // <body>: inside the pinned section it sits in that section's
             // stacking context, under the navbar, and a tap lands on the logo.
-            className="pointer-events-auto fixed left-0 top-0 z-[1000] m-0 max-w-full cursor-pointer whitespace-pre-wrap bg-black/80 p-1.5 font-mono text-[9px] leading-[1.35] text-lime-300"
+            // Below the navbar (h-16), so the logo and the menu stay tappable
+            // while diagnosing.
+            className="pointer-events-auto fixed left-0 top-16 z-[1000] m-0 max-w-full cursor-pointer whitespace-pre-wrap bg-black/80 p-1.5 font-mono text-[9px] leading-[1.35] text-lime-300"
           />,
           document.body,
         )}

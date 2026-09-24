@@ -383,6 +383,21 @@ visível. Duas correções: `show()` zera a velocidade da faixa de saída
 dá `play()` em elemento `ended` — fica ocioso, e os ramos de seek o trazem de
 volta se a história retornar a ele.
 
+**O corte 02 → 03 (trabalho escondido na hora errada).** Com a velocidade
+aprovada, sobrou um pequeno engasgo no fim da cena 02. Duas coisas aconteciam
+escondidas exatamente ali: a faixa 03 recebia uma re-pré-rolagem (um `play()`
+oculto) na janela de 3 s antes do corte, porque a pré-rolagem original dela já
+tinha mais de 10 s — na 01 → 02 isso não ocorre porque a 02 foi pré-rolada há
+pouco; e no instante do corte a faixa 02 seguia tocando escondida até o último
+frame enquanto a 03 arrancava, dois decodificadores ocupados no momento em que
+a cena nova começa. Agora: a faixa de saída é estacionada na hora
+(`engine.park()`: pausa imediata, alvo congelado onde está — ninguém vê o
+frame estacionado num corte seco), e todo trabalho escondido — pré-rolagens,
+re-pré-rolagens e a caminhada das faixas ocultas até o frame de repouso
+(`settleHidden`: último frame para cena já passada, primeiro para cena à
+frente) — só acontece com a faixa visível em repouso. A única exceção é a
+primeira pré-rolagem de uma faixa prestes a ser necessária.
+
 **O arranque frio das cenas 02–04.** Com o ciclo resolvido, a cena 01 ficou
 limpa e as outras não. A diferença é onde cada uma paga o primeiro `play()` de
 um elemento recém-carregado: no iOS ele custa o preroll do AVPlayer, 100 a

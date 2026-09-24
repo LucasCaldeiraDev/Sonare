@@ -285,6 +285,14 @@ export type ScrubEngine = {
    * Called at the handover; if play() is refused again it blocks again.
    */
   retryPlay: () => void;
+  /**
+   * Stop where it is, now, and stay there: velocity zeroed, target moved to
+   * the current playhead so the ticker idles instead of chasing. For a track
+   * that has just left the screen. Its real target — the last frame, for a
+   * hard cut nobody sees — is handed back by the caller at a moment when
+   * converging on it hidden costs the visible track nothing.
+   */
+  park: () => void;
   stats: () => ScrubStats;
   destroy: () => void;
 };
@@ -783,6 +791,14 @@ export function createScrubEngine(
     prime: () => primeElement(state),
     retryPlay: () => {
       state.playBlockedUntil = 0;
+    },
+    park: () => {
+      state.velocity = 0;
+      state.target = clamp(state.video.currentTime, 0, Math.max(0, duration - FRAME));
+      state.lastTarget = state.target;
+      state.queued = null;
+      requestPause(state);
+      state.mode = "idle";
     },
     preroll: () => {
       if (state.playPending || !state.video.paused) return false;

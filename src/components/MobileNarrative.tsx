@@ -853,18 +853,45 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
 
     /**
      * Pre-roll a track's pipeline — see engine.preroll for what that buys on
-     * iOS. Called every tick; acts once per track, and once more inside the
-     * lead window if the last pre-roll has gone stale.
+     * iOS. Called every tick; acts once per track, and again if the last
+     * pre-roll has gone stale.
+     *
+     * WHEN, not just whether. A pre-roll is a play() on a hidden element, and
+     * on a phone that is a second decoder starting up while the visible one
+     * is working — the 02 → 03 cut showed it as a hitch at the end of scene
+     * 02, where scene 03's stale refresh landed in the lead window. So a
+     * refresh only happens while the visible track is at rest, and a first
+     * pre-roll waits for that too unless the track is about to be needed.
      */
-    const preroll = (i: number, force: boolean) => {
+    const preroll = (i: number, atRest: boolean, urgent: boolean) => {
       const el = videoRefs.current[i];
       const engine = engines[i];
       if (!el || !engine || el.readyState < 2 || !el.paused) return;
       const now = performance.now();
-      if (prerolledAt[i] && !(force && now - prerolledAt[i] > PREROLL_STALE_MS)) return;
+      const allowed = prerolledAt[i]
+        ? atRest && now - prerolledAt[i] > PREROLL_STALE_MS
+        : atRest || urgent;
+      if (!allowed) return;
       // Only counts once the engine has actually issued the play(); a refusal
       // (pending play, rate limit, Low Power Mode) is asked again next tick.
       if (engine.preroll()) prerolledAt[i] = now;
+    };
+
+    /**
+     * Walk the hidden tracks to where the next crossing expects them — the
+     * last frame for a scene already passed, the first for one still ahead —
+     * but only while the visible track is at rest, so the hidden work never
+     * competes with the picture. Cheap: one target write per hidden track
+     * per idle tick, and the engine idles once it is there.
+     */
+    const settleHidden = () => {
+      for (let j = 0; j < MOBILE_SEGMENTS.length; j++) {
+        if (j === active || gate?.to === j || (!adopted[j] && !onNetwork[j])) continue;
+        const engine = engines[j];
+        if (!engine) continue;
+        engine.setTarget(frameToMediaTime(j < active ? MOBILE_SEGMENTS[j].frames - 1 : 0));
+        engine.seedVelocity(0);
+      }
     };
 
     /**
@@ -959,16 +986,21 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         // starts on screen — see engine.retryPlay.
         to.retryPlay();
         /**
-         * And PARK the outgoing one. Its target stops being written the moment
-         * it leaves the screen, so its velocity estimate would otherwise stay
-         * frozen at whatever the scroll was doing at the cut — "advancing",
-         * for ever — and an engine that believes it is advancing keeps a
-         * hidden track in the play path: past its last frame, into `ended`,
-         * and around a play/seek loop the engine guards against but should
-         * never be asked to. At zero velocity it converges on its last frame
-         * and pauses, which is what a parked track is.
+         * And PARK the outgoing one — stop it where it is, this tick.
+         *
+         * Its target stops being written the moment it leaves the screen, so
+         * its velocity estimate would otherwise stay frozen at whatever the
+         * scroll was doing at the cut — "advancing", for ever — and an engine
+         * that believes it is advancing keeps a hidden track in the play
+         * path: past its last frame, into `ended`, and around a play/seek
+         * loop. Zeroing the velocity fixed that, but still let the track play
+         * on to its last frame under the incoming scene — two decoders busy
+         * at the one moment the new scene is starting, which is the hitch the
+         * 02 → 03 cut showed. So: pause now, wherever it is. Nobody sees a
+         * parked frame at a hard cut, and `settleHidden` walks it to its last
+         * frame later, at a moment the visible track is at rest.
          */
-        from.seedVelocity(0);
+        from.park();
       }
       active = i;
       gate = null;
@@ -1097,7 +1129,24 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       const inLead = nextStart !== undefined && target > nextStart - PRELOAD_LEAD_FRAMES;
       if (inLead) warm(index + 1);
       warm(index);
-      for (let i = 0; i < MOBILE_SEGMENTS.length; i++) preroll(i, inLead && i === index + 1);
+      // Hidden work — pre-rolls and parked tracks walking to their resting
+      // frame — waits for the film to be genuinely at rest: scroll stopped,
+      // no lag left to close, visible track idle and paused. The visible
+      // track alone is not enough: it idles for a tick in a hold mid-scroll,
+      // and for a tick at every cut before the new scene's first play(), and
+      // hidden work landing in exactly those ticks was the 02 → 03 hitch.
+      const activeEl = videoRefs.current[active];
+      const atRest =
+        Math.abs(wantedFps) < FILM_SETTLED_FPS &&
+        Math.abs(wanted - shownFrame) < 1 &&
+        index === active &&
+        engines[active]?.mode() === "idle" &&
+        !!activeEl &&
+        activeEl.paused;
+      for (let i = 0; i < MOBILE_SEGMENTS.length; i++) {
+        if (i !== index) preroll(i, atRest, inLead && i === index + 1);
+      }
+      if (atRest) settleHidden();
 
       if (index === active) {
         gate = null;

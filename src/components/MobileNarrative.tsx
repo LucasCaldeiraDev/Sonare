@@ -246,18 +246,17 @@ const seamOn =
  * the cap and plays out at the top; as the bank drains the rate eases toward
  * the floor, which reads as momentum settling rather than a cut-off.
  *
- * THE NUMBERS ARE CADENCE, NOT TASTE. 24 fps footage on a 60 Hz panel judders
- * at most rates — 1x is the classic 2:3 pulldown — and on a 120 Hz one at
- * most rates too. 1.25x is 30 fps: exactly two refreshes per frame at 60 Hz,
- * exactly four at 120, the one rate above real time that both panels present
- * evenly. It is the floor, so it is where a deliberate scroll spends its
- * time. The ceiling is only a little above it, as asked; the rates between
- * are uneven on both panels, which is the argument for keeping the band
- * narrow rather than for any particular top. `?gmin=` and `?gmax=` override
- * both in the deployed build, since this is tuned by feel on the device.
+ * THE NUMBERS. 1.25–1.4x was the cadence-perfect choice (30 fps is exactly
+ * two refreshes per frame at 60 Hz and four at 120) and it was judged a
+ * little slow on the handset, so the band sits at 1.5–1.75x by request.
+ * Inside it the engine still snaps to the nearest even cadence where one is
+ * close — 1.667x is 40 fps, exactly three refreshes per frame on a 120 Hz
+ * panel and a regular 2-1 alternation on a 60 Hz one — so a coast near the
+ * top of the band presents evenly. `?gmin=` and `?gmax=` override both in
+ * the deployed build, since this is tuned by feel on the device.
  */
-const GOVERNOR_MIN_RATE = 1.25;
-const GOVERNOR_MAX_RATE = 1.4;
+const GOVERNOR_MIN_RATE = 1.5;
+const GOVERNOR_MAX_RATE = 1.75;
 
 /**
  * The floor in STORY FRAMES for a single gesture — the desktop's
@@ -977,8 +976,16 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
     };
 
     const drive = (_time: number, deltaMs: number) => {
+      // The pin has ended but the gesture that carried the visitor out of it
+      // has not: keep governing until the finger is up and the backlog is
+      // drained, then hand the scroll back to the page. See onToggle.
+      if (!journeyActive && observer?.isEnabled && !observer.isPressed && Math.abs(backlog) < 1) {
+        observer.disable();
+        release();
+        backlog = 0;
+      }
       // Release whatever the gesture asked for, at the governed rate.
-      if (journeyActive && backlog !== 0) {
+      if (observer?.isEnabled && backlog !== 0) {
         const cap = backlogCap();
         if (Math.abs(backlog) > cap) backlog = Math.sign(backlog) * cap;
         const step = Math.sign(backlog) * Math.min(Math.abs(backlog), (governorRate() * deltaMs) / 1000);
@@ -1273,11 +1280,17 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
             if (self.isActive && observer && !governorFailed) {
               claim();
               observer.enable();
-            } else {
+            } else if (!observer || (!observer.isPressed && Math.abs(backlog) < 1)) {
               observer?.disable();
               release();
               backlog = 0;
             }
+            // Otherwise the finger is still down, or a fling is still being
+            // released: the gesture stays governed past the pin's end and
+            // `drive` hands the scroll back once it has settled. Letting go
+            // mid-gesture is a page that stops dead under the finger — iOS
+            // decided at the touch's start that this gesture was not a native
+            // scroll, and nothing changes its mind until the next touch.
           },
         },
       });

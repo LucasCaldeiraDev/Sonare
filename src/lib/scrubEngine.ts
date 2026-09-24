@@ -119,18 +119,18 @@ const RATE_WRITE_URGENT = 0.3;
 
 /**
  * CADENCE. 24 fps footage presents evenly on a phone only at rates where the
- * panel's refresh divides the frame period: 1.25x is 30 fps — exactly two
- * refreshes per frame at 60 Hz and four at 120 Hz — and it is the only rate
- * above real time that both panels share. Every rate near it is uneven (a
- * 1-2-1-2 pattern of refreshes per frame), which the eye reads as a picture
- * that stumbles. So a demanded rate within CADENCE_SNAP of it is written as
- * exactly 1.25: the position error that a small mismatch accumulates is
- * corrected by the gap term of the rate formula, which pushes the demand
- * outside the window only after a fraction of a frame has drifted, and
- * corrects it in one write rather than a hundred.
+ * panel's refresh divides the frame period. 1.25x is 30 fps — exactly two
+ * refreshes per frame at 60 Hz and four at 120 Hz — the one rate above real
+ * time both panels share. 1.667x is 40 fps: exactly three per frame at
+ * 120 Hz, and a regular 2-1 alternation at 60 Hz, which is far easier on the
+ * eye than the irregular patterns of the rates around it. A demanded rate
+ * within CADENCE_SNAP of either is written as exactly that rate: the position
+ * error a small mismatch accumulates is corrected by the gap term of the rate
+ * formula, which pushes the demand outside the window only after a fraction
+ * of a frame has drifted, and corrects it in one write rather than a hundred.
  */
-const CADENCE_RATE = 1.25;
-const CADENCE_SNAP = 0.1;
+const CADENCE_RATES = [1.25, 5 / 3];
+const CADENCE_SNAP = 0.08;
 
 /** A seek slower than this counts against the health score used for tier fallback. */
 const SLOW_SEEK_MS = 220;
@@ -600,7 +600,12 @@ function tick() {
     const floor = delta > TAIL_FLOOR_FRAMES * FRAME ? 1 : RATE_MIN;
     const feedForward = advancing ? s.velocity : 0;
     let rate = clamp(feedForward + delta / RATE_TIME_CONSTANT, floor, s.rateCeiling());
-    if (Math.abs(rate - CADENCE_RATE) < CADENCE_SNAP) rate = CADENCE_RATE;
+    for (const even of CADENCE_RATES) {
+      if (Math.abs(rate - even) < CADENCE_SNAP) {
+        rate = even;
+        break;
+      }
+    }
     const change = Math.abs(v.playbackRate - rate);
     if (
       change > RATE_WRITE_HYSTERESIS &&

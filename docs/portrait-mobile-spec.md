@@ -275,8 +275,19 @@ publicada, para comparar no aparelho.
 um piso (uma dentada da roda avança no mínimo três frames). O governador de
 toque tem os dois, e no celular eles são propositalmente **próximos**:
 enquanto o visitante pede movimento, o filme avança a uma taxa de história
-entre `GOVERNOR_MIN_RATE` (1,25x) e `GOVERNOR_MAX_RATE` (1,6x), qualquer que
-seja a velocidade do dedo. Um arrasto lento não anda frame a frame; um
+entre `GOVERNOR_MIN_RATE` (1,5x) e `GOVERNOR_MAX_RATE` (1,75x), qualquer que
+seja a velocidade do dedo. (Começou em 1,25–1,4x, a escolha perfeita de
+cadência; foi julgado lento no aparelho e subiu a pedido. Dentro da faixa o
+motor ainda encaixa a taxa em 1,667x — 40 fps, três refreshes por frame a
+120 Hz e alternância regular 2-1 a 60 Hz — quando a demanda está perto.)
+
+**O fim do pin no meio de um gesto.** Quando o pin termina com o dedo ainda na
+tela, desligar o governador na hora devolve o scroll ao nativo — mas o iOS
+decidiu no início do toque que aquele gesto não era rolagem nativa, e nada o
+faz mudar de ideia até o próximo toque: a página para sob o dedo, o que se
+sente como um "gap" na última cena. Agora o gesto continua governado depois
+do pin, até o dedo levantar e o backlog esvaziar; só então `drive` devolve o
+scroll ao nativo. Um arrasto lento não anda frame a frame; um
 arremesso não dispara. O dedo decide por quanto tempo o filme anda (enche o
 backlog, até 1,5 s de história); a faixa decide a que velocidade — a posição
 dentro dela é proporcional ao quanto o backlog está cheio, então um arremesso

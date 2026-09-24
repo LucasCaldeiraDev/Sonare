@@ -101,7 +101,15 @@ type Props = {
  * a teleport. Measured at 0.5 the presented step stays at one frame per
  * animation frame, which is the whole budget there is.
  */
-const SCRUB = 0.5;
+const SCRUB = 0.3;
+/*
+ * 0.3, down from 0.5, once the governor and the film-level limiter existed:
+ * the fling-absorbing job this constant used to do alone is now done by the
+ * band, and what remained of it was pure latency — every reversal of the
+ * gesture waited for the scrub tween to decelerate and turn, on top of the
+ * bank it had to pay back. Not lower: a wheel-less phone still needs the
+ * damping to turn 60 discrete scroll writes a second into movement.
+ */
 
 /**
  * `?diag=1` shows a live readout over the film. Deliberately NOT gated on
@@ -295,11 +303,30 @@ const GOVERNOR_BACKLOG_S = 1.5;
  * at the floor and stopping dead. While the finger is down the band applies
  * untapered — the floor is the point there.
  */
-const GOVERNOR_COAST_S = 0.35;
-const GOVERNOR_COAST_MIN_S = 0.6;
+const GOVERNOR_COAST_S = 0.25;
+const GOVERNOR_COAST_MIN_S = 0.35;
+const GOVERNOR_COAST_MAX_S = 0.9;
 const GOVERNOR_COAST_MIN_PX_S = 80;
-const GOVERNOR_TAIL_S = 0.7;
+const GOVERNOR_TAIL_S = 0.5;
 const GOVERNOR_TAIL_FLOOR_RATE = 0.35;
+
+/**
+ * THE GESTURE IS IN CHARGE OF THE BANK. Three rules, all from the handset:
+ *
+ *   a reversal drops the opposite bank at once — a delta against what is
+ *   banked used to merely subtract from it, so the film kept going the old
+ *   way until the visitor had dragged the whole bank back ("it does not
+ *   obey, then two seconds later it does");
+ *
+ *   a finger held still on the screen freezes the release — nothing is
+ *   drained while there has been no touch delta for GOVERNOR_STILL_MS, so a
+ *   stop is a stop, with the bank kept for when the finger moves again;
+ *
+ *   a finger lifted while still drops the bank entirely — that visitor
+ *   meant to stop, and a coast after a deliberate stop reads as the page
+ *   ignoring them.
+ */
+const GOVERNOR_STILL_MS = 90;
 
 /**
  * Hard cap on the story rate the governor will permit, ABOVE what the refresh
@@ -543,6 +570,8 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
     let backlog = 0;
     /** Sub-pixel remainder of the release, carried between ticks. */
     let carry = 0;
+    /** When the last touch delta arrived — a still finger freezes the release. */
+    let lastTouchMoveAt = 0;
     let journeyActive = false;
     /** The scroll-driven timeline and the film-driven one — see storyTl below. */
     let scrollTl: gsap.core.Timeline | null = null;
@@ -687,10 +716,14 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           // it is inverted like the deltas.
           onDragEnd: (self) => {
             const v = -self.velocityY;
-            if (Math.abs(v) < GOVERNOR_COAST_MIN_PX_S) return;
+            // Lifted while still: stop, and drop whatever was banked.
+            if (Math.abs(v) < GOVERNOR_COAST_MIN_PX_S) {
+              backlog = 0;
+              return;
+            }
             const pxs = pxPerStorySecond();
             const coast = Math.min(
-              backlogCap(),
+              GOVERNOR_COAST_MAX_S * pxs,
               Math.max(GOVERNOR_COAST_MIN_S * pxs, Math.abs(v) * GOVERNOR_COAST_S),
             );
             // Same direction as what is already banked: top it up to the
@@ -700,7 +733,12 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           },
           onChangeY: (self) => {
             touchEvents += 1;
-            backlog += -self.deltaY;
+            lastTouchMoveAt = performance.now();
+            const delta = -self.deltaY;
+            // Against the bank: the bank is gone, this delta is the new one.
+            // See GOVERNOR_STILL_MS.
+            if (delta !== 0 && Math.sign(delta) !== Math.sign(backlog)) backlog = 0;
+            backlog += delta;
             // The floor raises the pending TOTAL to one visible step — see
             // GOVERNOR_MIN_STEP_FRAMES. A gesture already above it is left at
             // its own true size.
@@ -1068,7 +1106,10 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         backlog = 0;
       }
       // Release whatever the gesture asked for, at the governed rate.
-      if (observer?.isEnabled && backlog !== 0) {
+      // A finger held still on the screen holds the film — see GOVERNOR_STILL_MS.
+      const fingerStill =
+        !!observer?.isPressed && performance.now() - lastTouchMoveAt > GOVERNOR_STILL_MS;
+      if (observer?.isEnabled && backlog !== 0 && !fingerStill) {
         const cap = backlogCap();
         if (Math.abs(backlog) > cap) backlog = Math.sign(backlog) * cap;
         const step = Math.sign(backlog) * Math.min(Math.abs(backlog), (governorRate() * deltaMs) / 1000);
@@ -1198,6 +1239,13 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       // track alone is not enough: it idles for a tick in a hold mid-scroll,
       // and for a tick at every cut before the new scene's first play(), and
       // hidden work landing in exactly those ticks was the 02 → 03 hitch.
+      // Which tracks the film needs frames from: on screen, arriving, next in
+      // line. The rest are left at whatever the browser keeps of them.
+      for (let j = 0; j < MOBILE_SEGMENTS.length; j++) {
+        engines[j]?.setWanted(
+          j === active || j === index || gate?.to === j || (inLead && j === index + 1),
+        );
+      }
       const activeEl = videoRefs.current[active];
       const atRest =
         Math.abs(wantedFps) < FILM_SETTLED_FPS &&

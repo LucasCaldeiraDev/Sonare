@@ -293,6 +293,14 @@ export type ScrubEngine = {
    * converging on it hidden costs the visible track nothing.
    */
   park: () => void;
+  /**
+   * Whether the film needs this track's frames soon — on screen, arriving,
+   * or next in line. A track that is not wanted and has already been primed
+   * once is left alone at HAVE_METADATA: browsers release the decoded frames
+   * of a hidden paused video, and re-priming it every half second was a seek
+   * loop in the background for nothing. It is primed again when wanted.
+   */
+  setWanted: (wanted: boolean) => void;
   stats: () => ScrubStats;
   destroy: () => void;
 };
@@ -346,6 +354,8 @@ type EngineState = {
   lastPrimeAt: number;
   /** When playbackRate was last written — see RATE_WRITE_INTERVAL_MS. */
   lastRateWriteAt: number;
+  /** See ScrubEngine.setWanted. */
+  wanted: boolean;
 };
 
 export type ScrubOptions = {
@@ -513,6 +523,8 @@ function tick() {
     // ask for the target frame, then wait for it. `seeked` lifts readyState
     // to 2 and the ordinary branches below take over.
     if (v.readyState < 2) {
+      // Primed before and not wanted now: leave it — see setWanted.
+      if (!s.wanted && s.stats.seeksCompleted > 0) continue;
       if (!s.seeking && now - s.lastSeekEndedAt > PRIME_SEEK_INTERVAL_MS) {
         s.mode = "seek";
         issueSeek(s, s.target, true);
@@ -658,6 +670,7 @@ export function createScrubEngine(
     lastSeekEndedAt: 0,
     lastPrimeAt: 0,
     lastRateWriteAt: 0,
+    wanted: true,
     stats: {
       seekRequests: 0,
       seeksCompleted: 0,
@@ -791,6 +804,9 @@ export function createScrubEngine(
     prime: () => primeElement(state),
     retryPlay: () => {
       state.playBlockedUntil = 0;
+    },
+    setWanted: (wanted: boolean) => {
+      state.wanted = wanted;
     },
     park: () => {
       state.velocity = 0;

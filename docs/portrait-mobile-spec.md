@@ -307,6 +307,19 @@ banqueia nada: esse visitante quis parar. O resto de sub-pixel da liberação é
 carregado entre ticks (antes era devolvido ao backlog, o que com a cauda
 nunca deixaria os últimos pixels irem).
 
+**O gesto manda no banco.** A primeira inércia trouxe dois relatos: "paro e o
+scroll continua" e "inverto e ele demora 2 s para obedecer". A raiz é a mesma,
+o backlog: um delta contrário só subtraía do saldo banqueado para frente, então
+o filme seguia adiante até o visitante "pagar" o saldo inteiro arrastando ao
+contrário; e com o dedo parado na tela o saldo continuava sendo liberado.
+Três regras agora: inversão zera o saldo contrário na hora; dedo parado na tela
+(sem delta há 90 ms) congela a liberação, com o saldo guardado para quando o
+dedo voltar a andar; soltar parado zera o saldo. A inércia ao soltar em
+movimento encurtou (`|v| × 0,25 s`, entre 0,35 e 0,9 s de história, cauda de
+0,5 s), e o `scrub` do ScrollTrigger caiu de 0,5 para 0,3 s: com a faixa e o
+limitador do filme fazendo o trabalho de absorver arremessos, o que sobrava
+dele era latência pura em cada inversão.
+
 **Sem salto, nunca.** O limitador do filme fechava um atraso grande com um
 corte quando o scroll parava — e num arremesso até o fim isso era "saindo do
 S110 ele me leva direto para o final da última cena": o pedido estava no fim,

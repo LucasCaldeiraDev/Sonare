@@ -295,6 +295,29 @@ sai no topo e assenta para o piso, o que lê como inércia. É o que foi pedido
 do aparelho, e é também o que o decodificador quer: uma `playbackRate` que
 quase não muda é a única coisa que o AVPlayer apresenta sem tropeço.
 
+**Inércia ao soltar.** Um dedo que levanta ainda em movimento parava o filme
+em poucos frames: o backlog só tinha o que os últimos deltas puseram nele (o
+piso de três frames, em geral) e isso esvaziava num tick. Agora, ao soltar, a
+velocidade do dedo vira história banqueada — `|velocidade| × 0,35 s`, nunca
+menos de 0,6 s de história se o dedo estava de fato se movendo, nunca mais que
+o teto do backlog — e, com o dedo levantado, a liberação afina nos últimos
+0,7 s de história do backlog, da faixa até 0,35x, para o filme deslizar até
+parar em vez de correr no piso e estancar. Dedo que parou antes de levantar não
+banqueia nada: esse visitante quis parar. O resto de sub-pixel da liberação é
+carregado entre ticks (antes era devolvido ao backlog, o que com a cauda
+nunca deixaria os últimos pixels irem).
+
+**Sem salto, nunca.** O limitador do filme fechava um atraso grande com um
+corte quando o scroll parava — e num arremesso até o fim isso era "saindo do
+S110 ele me leva direto para o final da última cena": o pedido estava no fim,
+o scroll parou, e o corte caiu 3 s antes do fim; as cenas 03 e 04 simplesmente
+não tocavam. Agora o filme sempre toca todos os frames entre onde está e onde
+o scroll foi: na faixa quando o atraso é pequeno, a 2x (o teto do motor)
+quando passa de 3 s. E as palavras — o fade do hero e o encerramento — saíram
+da timeline do scroll para uma timeline dirigida pelo frame mostrado
+(`storyTl`), de modo que o encerramento só sobe quando o filme chega de fato
+ao fim, e não sobre um filme ainda a caminho.
+
 **Dois limitadores, e por quê.** O governador de scroll mede o *gesto*: ele
 precisa possuir o toque, escrever o scroll e ter a página obedecendo — três
 coisas em que o WebKit do celular dá palpite, e o aparelho seguiu rolando sem

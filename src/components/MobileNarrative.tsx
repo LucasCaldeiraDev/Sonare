@@ -279,6 +279,29 @@ const GOVERNOR_MIN_STEP_FRAMES = 3;
 const GOVERNOR_BACKLOG_S = 1.5;
 
 /**
+ * MOMENTUM. A finger that lifts while still moving used to stop the film
+ * within a few frames: the backlog held only what the last touch deltas had
+ * put in it (the three-frame floor, typically), and that drained in a tick.
+ * The handset asked for the film to keep going and settle, the way a native
+ * scroll does. So on release the finger's velocity is banked as story:
+ * `|velocity| x GOVERNOR_COAST_S` pixels, never less than GOVERNOR_COAST_MIN_S
+ * of story when the finger was actually moving (GOVERNOR_COAST_MIN_PX_S), and
+ * never more than the backlog cap. A finger that stopped before lifting banks
+ * nothing — that visitor meant to stop.
+ *
+ * And the release TAPERS once the finger is up: over the last
+ * GOVERNOR_TAIL_S of story in the backlog the rate eases from the band down
+ * to GOVERNOR_TAIL_FLOOR_RATE, so the film glides to rest instead of running
+ * at the floor and stopping dead. While the finger is down the band applies
+ * untapered — the floor is the point there.
+ */
+const GOVERNOR_COAST_S = 0.35;
+const GOVERNOR_COAST_MIN_S = 0.6;
+const GOVERNOR_COAST_MIN_PX_S = 80;
+const GOVERNOR_TAIL_S = 0.7;
+const GOVERNOR_TAIL_FLOOR_RATE = 0.35;
+
+/**
  * Hard cap on the story rate the governor will permit, ABOVE what the refresh
  * measurement alone would allow — and the reason mobile needs one where
  * desktop does not.
@@ -397,22 +420,22 @@ const GOVERNOR_STUCK_LANDED_SHARE = 0.2;
  * frame never outruns the band and this is a pass-through; when it is not,
  * this is the limiter the visitor feels. It depends on nothing but the ticker.
  *
- * A fling can still put the wanted frame far ahead of the shown one, and a
- * film that then plays for twenty seconds to catch up is a hostage situation.
- * So once the SCROLL HAS COME TO REST, a lag past this many seconds of story
- * is closed by one jump to that distance behind the wanted frame — one cut,
- * which the engine answers with one seek — and the band plays the rest.
- *
- * Only once at rest, and that is the whole point. The first version jumped
- * whenever the lag exceeded the cap, which meant that under a native fling
- * the shown frame, pinned at the cap behind a wanted frame still racing, was
- * dragged along at the fling's own speed: the limiter had re-coupled the
- * film to the scroll it exists to decouple it from, and the film sprinted
- * exactly when it was supposed not to. While the wanted frame moves, the
- * shown one moves at the band's top and nothing else, however far behind it
- * falls.
+ * A fling can still put the wanted frame far ahead of the shown one. Two
+ * earlier versions closed that lag with a JUMP — first whenever it exceeded a
+ * cap (which re-coupled the film to a racing scroll), then only once the
+ * scroll was at rest. The second was what the handset reported as "leaving
+ * the S110 it takes me straight to the end of the last scene": a fling to
+ * the end put the wanted frame at the film's end, the scroll came to rest,
+ * and the one cut landed three seconds before the end — scenes 03 and 04
+ * simply never played. No jump, then, ever. Past this many seconds of lag
+ * the shown frame catches up at the engine's own ceiling (2x) instead of
+ * the band's top, which is the most the decoder will present cleanly; below
+ * it, the band. The film always plays every frame between where it is and
+ * where the scroll went, and the hero fade and the closing follow the SHOWN
+ * frame (see storyTl), so the closing cannot appear over a film still on
+ * its way there.
  */
-const FILM_LAG_CAP_S = 3;
+const FILM_CATCH_UP_LAG_S = 3;
 /** Wanted-frame speed, in frames per second, below which the scroll counts as at rest. */
 const FILM_SETTLED_FPS = 2;
 
@@ -518,7 +541,12 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
      * been given, in pixels, released by the ticker at a bounded rate.
      */
     let backlog = 0;
+    /** Sub-pixel remainder of the release, carried between ticks. */
+    let carry = 0;
     let journeyActive = false;
+    /** The scroll-driven timeline and the film-driven one — see storyTl below. */
+    let scrollTl: gsap.core.Timeline | null = null;
+    let storyTl: gsap.core.Timeline | null = null;
 
     /**
      * The display's own rate, measured rather than assumed — a 120 Hz phone may
@@ -582,7 +610,13 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
      */
     const governorRate = () => {
       const fill = Math.min(1, Math.abs(backlog) / backlogCap());
-      const rate = governorMinRate + (governorMaxRate - governorMinRate) * fill;
+      let rate = governorMinRate + (governorMaxRate - governorMinRate) * fill;
+      // Finger up: the tail of the backlog eases the film to rest — see
+      // GOVERNOR_TAIL_S. Finger down, the band applies as is.
+      if (observer && !observer.isPressed) {
+        const tail = smoothstep(Math.min(1, Math.abs(backlog) / (GOVERNOR_TAIL_S * pxPerStorySecond())));
+        rate = GOVERNOR_TAIL_FLOOR_RATE + (rate - GOVERNOR_TAIL_FLOOR_RATE) * tail;
+      }
       return Math.min(rate, rateCeiling()) * pxPerStorySecond();
     };
 
@@ -647,6 +681,23 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           // matches the 3 px past which Observer stops treating a release as
           // a tap, so a tap stays a tap and anything larger is a gesture.
           tolerance: 4,
+          // The finger lifts while moving: bank its speed as story so the
+          // film coasts and settles instead of stopping dead — see
+          // GOVERNOR_COAST_S. Observer's velocity has the finger's sign, so
+          // it is inverted like the deltas.
+          onDragEnd: (self) => {
+            const v = -self.velocityY;
+            if (Math.abs(v) < GOVERNOR_COAST_MIN_PX_S) return;
+            const pxs = pxPerStorySecond();
+            const coast = Math.min(
+              backlogCap(),
+              Math.max(GOVERNOR_COAST_MIN_S * pxs, Math.abs(v) * GOVERNOR_COAST_S),
+            );
+            // Same direction as what is already banked: top it up to the
+            // coast. A reversal drops the old bank and coasts the new way.
+            if (Math.sign(backlog) === Math.sign(v)) backlog = Math.sign(v) * Math.max(Math.abs(backlog), coast);
+            else backlog = Math.sign(v) * coast;
+          },
           onChangeY: (self) => {
             touchEvents += 1;
             backlog += -self.deltaY;
@@ -1022,9 +1073,15 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         if (Math.abs(backlog) > cap) backlog = Math.sign(backlog) * cap;
         const step = Math.sign(backlog) * Math.min(Math.abs(backlog), (governorRate() * deltaMs) / 1000);
         backlog -= step;
-        // Under a pixel is beneath what a scroll call can express; keep it for
-        // the next tick instead of losing it to rounding.
-        if (Math.abs(step) >= 1) {
+        // Under a pixel is beneath what a scroll call can express. The
+        // remainder is carried into the next tick rather than handed back to
+        // the backlog: with the tapered tail the last pixels release slowly,
+        // and handing them back would never let them go.
+        carry += step;
+        const move = Math.trunc(carry);
+        carry -= move;
+        if (Math.abs(backlog) < 0.5) backlog = 0;
+        if (move !== 0) {
           /**
            * `behavior: "instant"` is load-bearing, and CanvasNarrative paid for
            * this lesson already: the base stylesheet sets `scroll-behavior:
@@ -1035,11 +1092,11 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
            */
           const before = window.scrollY;
           const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-          const want = Math.min(Math.max(before + step, 0), maxScroll);
+          const want = Math.min(Math.max(before + move, 0), maxScroll);
           window.scrollTo({ top: want, behavior: "instant" });
           releasedSinceCheck += Math.abs(want - before);
           releasedTotal += Math.abs(want - before);
-        } else backlog += step;
+        }
       }
       // Does the page follow the governor's writes? See GOVERNOR_STUCK_WINDOW_MS
       // for why this is judged per second and not per tick.
@@ -1084,18 +1141,24 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       wantedPrev = wanted;
       if (governorOff) shownFrame = wanted;
       else {
-        const maxStep = (governorMaxRate * FPS * deltaMs) / 1000;
-        const capFrames = FILM_LAG_CAP_S * FPS;
-        const atRest = Math.abs(wantedFps) < FILM_SETTLED_FPS;
-        if (wanted > shownFrame) {
-          if (atRest && wanted - shownFrame > capFrames) shownFrame = wanted - capFrames;
-          shownFrame = Math.min(wanted, shownFrame + maxStep);
-        } else if (wanted < shownFrame) {
-          if (atRest && shownFrame - wanted > capFrames) shownFrame = wanted + capFrames;
-          shownFrame = Math.max(wanted, shownFrame - maxStep);
-        }
+        // Far behind, catch up at the engine's ceiling; otherwise the band.
+        // Never a jump — see FILM_CATCH_UP_LAG_S.
+        const lag = Math.abs(wanted - shownFrame);
+        const rate = lag > FILM_CATCH_UP_LAG_S * FPS ? rateCeiling() : governorMaxRate;
+        const maxStep = (rate * FPS * deltaMs) / 1000;
+        if (wanted > shownFrame) shownFrame = Math.min(wanted, shownFrame + maxStep);
+        else if (wanted < shownFrame) shownFrame = Math.max(wanted, shownFrame - maxStep);
       }
       const target = shownFrame;
+      // The words follow the picture, not the scroll: the hero fades as the
+      // film starts moving and the closing rises only once the film has
+      // actually arrived. Past the last frame the scroll timeline takes over,
+      // because the closing finishes inside the settle runway beyond the film.
+      if (storyTl) {
+        const filmDone = shownFrame >= MOBILE_GLOBAL_FRAMES - 1.5;
+        const storySeconds = (shownFrame / (MOBILE_GLOBAL_FRAMES - 1)) * MOBILE_GLOBAL_DURATION;
+        storyTl.time(filmDone ? Math.max(storySeconds, scrollTl?.time() ?? 0) : storySeconds, true);
+      }
       const { index, local } = locate(Math.floor(target));
       // Keep the fractional part: the engine quantizes to whole frames itself,
       // and handing it the rounded value first would quantize twice.
@@ -1344,6 +1407,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         },
       });
       tl.to({}, { duration: total }, 0);
+      scrollTl = tl;
 
       tl.eventCallback("onUpdate", () => {
         const t = tl.time();
@@ -1353,23 +1417,32 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         );
       });
 
-      if (heroRef.current) {
-        tl.to(heroRef.current, { opacity: 0, y: -28, duration: 1.1, ease: "power1.in" }, 0.9);
-        tl.set(heroRef.current, { pointerEvents: "none" }, 1.4);
-      }
+      /**
+       * The words, on a timeline the FILM drives rather than the scroll.
+       * Same tweens at the same story times as before; `drive` sets its time
+       * from the shown frame every tick. The scroll timeline above keeps only
+       * the pin and the wanted frame.
+       */
+      const words = gsap.timeline({ paused: true, defaults: { ease: "none" } });
+      words.to({}, { duration: total }, 0);
+      storyTl = words;
 
+      if (heroRef.current) {
+        words.to(heroRef.current, { opacity: 0, y: -28, duration: 1.1, ease: "power1.in" }, 0.9);
+        words.set(heroRef.current, { pointerEvents: "none" }, 1.4);
+      }
 
       if (closing && closingRef.current) {
         if (scrimRef.current) {
-          tl.fromTo(
+          words.fromTo(
             scrimRef.current,
             { opacity: 0 },
             { opacity: 1, duration: 1 },
             MOBILE_GLOBAL_DURATION - 0.5,
           );
         }
-        tl.set(closingRef.current, { pointerEvents: "auto" }, MOBILE_GLOBAL_DURATION);
-        tl.fromTo(
+        words.set(closingRef.current, { pointerEvents: "auto" }, MOBILE_GLOBAL_DURATION);
+        words.fromTo(
           closingRef.current,
           { opacity: 0, y: 24 },
           { opacity: 1, y: 0, duration: 1, ease: "power2.out" },

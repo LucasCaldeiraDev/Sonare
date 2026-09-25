@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { gsap, ScrollTrigger } from "../lib/gsap";
+import { scrollInstant } from "../lib/scroll";
 import { REFRESH_JOURNEY } from "../lib/scrollOrder";
 import {
   FPS,
@@ -1482,7 +1483,7 @@ export function CanvasNarrative({ id, settle = 2, closing, hero, debug = false }
            * Asking for instant here scrolls by the step this tick computed and
            * nothing else, which is the whole contract of the governor.
            */
-          window.scrollTo({ top: window.scrollY + step, behavior: "instant" });
+          scrollInstant(window.scrollY + step);
         } else backlog += step;
       }
 

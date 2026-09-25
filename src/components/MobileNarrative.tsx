@@ -12,6 +12,7 @@ import {
   MOBILE_SEGMENTS,
 } from "../content/timeline";
 import { REFRESH_JOURNEY } from "../lib/scrollOrder";
+import { scrollInstant } from "../lib/scroll";
 import { createScrubEngine, type ScrubEngine } from "../lib/scrubEngine";
 
 /**
@@ -962,6 +963,9 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
             if (total) download[i] = received / total;
           }
           download[i] = 1;
+          // Unmounted while the last chunk was in flight: a blob URL created
+          // now would never be revoked.
+          if (aborter.signal.aborted) return;
           // The type matters: Safari will not hand a typeless blob to its
           // media pipeline.
           localUrls[i] = URL.createObjectURL(new Blob(chunks, { type: "video/mp4" }));
@@ -1191,7 +1195,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           const before = window.scrollY;
           const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
           const want = Math.min(Math.max(before + move, 0), maxScroll);
-          window.scrollTo({ top: want, behavior: "instant" });
+          scrollInstant(want);
           releasedSinceCheck += Math.abs(want - before);
           releasedTotal += Math.abs(want - before);
         }
@@ -1240,7 +1244,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       // (normalizeScroll works around the same bug); one pixel in is invisible
       // and keeps the gesture measurable.
       if (journeyActive && observer && !governorFailed && isWebKitTouch && window.scrollY < 1) {
-        window.scrollTo({ top: 1, behavior: "instant" });
+        scrollInstant(1);
       }
 
       // The film-level limiter: the shown frame follows the wanted one at no

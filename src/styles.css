@@ -1,9 +1,12 @@
 @import "tailwindcss";
-/* Self-hosted faces: the body voice and the "system" voice (telemetry, labels,
-   timecodes). No CDN — everything ships from the bundle. */
-@import "@fontsource-variable/hanken-grotesk";
-@import "@fontsource/ibm-plex-mono/400.css";
-@import "@fontsource/ibm-plex-mono/500.css";
+/* Self-hosted faces — the body voice (Hanken Grotesk) and the "system" voice
+   (IBM Plex Mono: telemetry, labels, timecodes) — are imported from main.tsx,
+   not here. Imported through this stylesheet, the @fontsource CSS reached
+   Vite's build with its `url(./files/…)` references unresolved (Tailwind v4
+   inlines the @import without rebasing them), the built CSS pointed at
+   /assets/files/… which does not exist, and the deployed site fell back to
+   system fonts without a word. Imported from JS, Vite rebases and hashes the
+   font files like any other asset. No CDN — everything ships from the bundle. */
 
 /* The skill packages under .claude/ ship their own galleries and templates.
    Tailwind v4 auto-detects sources from the project root, so without this the

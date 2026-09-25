@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { brand } from "../content/copy";
+import { scrollInstant } from "../lib/scroll";
 
 const links = [
   { label: "Experiência", href: "#experiencia" },
@@ -33,7 +34,7 @@ function announceNavigation() {
 function goHome(event: React.MouseEvent<HTMLAnchorElement>) {
   event.preventDefault();
   announceNavigation();
-  window.scrollTo({ top: 0, behavior: "instant" });
+  scrollInstant(0);
   if (window.location.hash) {
     history.replaceState(null, "", window.location.pathname + window.location.search);
   }

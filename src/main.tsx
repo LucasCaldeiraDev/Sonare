@@ -1,6 +1,11 @@
 import { StrictMode, Suspense, lazy, type ComponentType } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+// The self-hosted faces, imported here rather than from styles.css so Vite
+// resolves their font files at build time — see the note in styles.css.
+import "@fontsource-variable/hanken-grotesk";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
 import "./styles.css";
 
 const path = window.location.pathname;

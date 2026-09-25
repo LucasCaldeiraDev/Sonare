@@ -355,6 +355,18 @@ pausa e play por intervalo, o ciclo de volta só na inércia. Zona morta a 2
 frames, reescrita a cada 150 ms (ou na hora se a mudança passa de 0,2), cauda
 da inércia de 0,8 s até 0,25x.
 
+**O detector de "página presa" e o scrub de vai-e-volta.** O relato "passo da
+cena 01 para a 02 e de repente o scroll vai 20x mais rápido e cai lá embaixo
+do site" é o scroll nativo assumindo: o governador tinha se desligado. O
+detector comparava o liberado com o deslocamento **líquido** da página por
+janela de 1 s, e um scrub para frente e para trás — 300 px para lá, 300 px
+para cá — não desloca nada líquido enquanto libera tudo; duas janelas assim e
+ele concluía que a página não obedecia. Agora ele soma o deslocamento
+absoluto tick a tick; o desligamento é `disable()`, não `kill()`, e a próxima
+entrada no pin o rearma (duas vezes por visita). Um passo de liberação e um
+passo do filme ficaram limitados a 50 ms de relógio, para que um frame longo
+(um soluço, uma aba voltando) não vire um salto.
+
 **Dois limitadores, e por quê.** O governador de scroll mede o *gesto*: ele
 precisa possuir o toque, escrever o scroll e ter a página obedecendo — três
 coisas em que o WebKit do celular dá palpite, e o aparelho seguiu rolando sem

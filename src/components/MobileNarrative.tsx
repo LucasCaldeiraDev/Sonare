@@ -432,6 +432,18 @@ const GOVERNOR_STUCK_WINDOW_MS = 1000;
 const GOVERNOR_STUCK_WINDOWS = 2;
 const GOVERNOR_STUCK_MIN_RELEASE_PX = 100;
 const GOVERNOR_STUCK_LANDED_SHARE = 0.2;
+/** How many times a governor that stood down is re-armed on re-entering the pin. */
+const GOVERNOR_REARMS = 2;
+
+/**
+ * Longest stretch of wall clock a single tick may release or advance. A
+ * frame that took half a second (a hitch, a tab coming back) would otherwise
+ * release half a second of banked scroll in one write and move the film a
+ * dozen frames in one step — a visible jump for a hiccup that should have
+ * cost nothing. Clamped, the missing time is simply lost, which is what a
+ * dropped frame looks like.
+ */
+const MAX_TICK_MS = 50;
 
 /**
  * THE FILM-LEVEL LIMITER, and why there are two.
@@ -709,8 +721,10 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
 
     /** Set by `drive` once the page stopped following — see GOVERNOR_STUCK_WINDOW_MS. */
     let governorFailed = false;
+    let governorRearms = 0;
     let stuckWindows = 0;
     let releasedSinceCheck = 0;
+    let landedSinceCheck = 0;
     let scrollAtCheck = 0;
     let lastStuckCheckAt = 0;
     /** Readout counters: touch deltas received, scroll released, scroll observed. */
@@ -1153,7 +1167,9 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       if (observer?.isEnabled && backlog !== 0 && !fingerStill) {
         const cap = backlogCap();
         if (Math.abs(backlog) > cap) backlog = Math.sign(backlog) * cap;
-        const step = Math.sign(backlog) * Math.min(Math.abs(backlog), (governorRate() * deltaMs) / 1000);
+        const step =
+          Math.sign(backlog) *
+          Math.min(Math.abs(backlog), (governorRate() * Math.min(deltaMs, MAX_TICK_MS)) / 1000);
         backlog -= step;
         // Under a pixel is beneath what a scroll call can express. The
         // remainder is carried into the next tick rather than handed back to
@@ -1184,25 +1200,40 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       // for why this is judged per second and not per tick.
       if (journeyActive && observer && !governorFailed) {
         const now = performance.now();
+        const sy = window.scrollY;
         if (!lastStuckCheckAt) {
           lastStuckCheckAt = now;
-          scrollAtCheck = window.scrollY;
-        } else if (now - lastStuckCheckAt >= GOVERNOR_STUCK_WINDOW_MS) {
-          const moved = Math.abs(window.scrollY - scrollAtCheck);
-          landedTotal += moved;
-          const stuck =
-            releasedSinceCheck >= GOVERNOR_STUCK_MIN_RELEASE_PX &&
-            moved < releasedSinceCheck * GOVERNOR_STUCK_LANDED_SHARE;
-          stuckWindows = stuck ? stuckWindows + 1 : 0;
-          if (stuckWindows >= GOVERNOR_STUCK_WINDOWS) {
-            governorFailed = true;
-            observer.kill();
-            release();
-            backlog = 0;
+          scrollAtCheck = sy;
+          landedSinceCheck = 0;
+        } else {
+          // Every pixel the page moved, in either direction, tick by tick.
+          // The first version netted the window's displacement, and a scrub
+          // back and forth — forward 300 px, back 300 px — nets nothing while
+          // releasing plenty: two seconds of that read as "stuck", the
+          // governor stood down, and the visitor's next fling was native and
+          // shot past the end of the site. That was reported as the scroll
+          // suddenly running "twenty times faster" out of scene 02.
+          landedSinceCheck += Math.abs(sy - scrollAtCheck);
+          scrollAtCheck = sy;
+          if (now - lastStuckCheckAt >= GOVERNOR_STUCK_WINDOW_MS) {
+            landedTotal += landedSinceCheck;
+            const stuck =
+              releasedSinceCheck >= GOVERNOR_STUCK_MIN_RELEASE_PX &&
+              landedSinceCheck < releasedSinceCheck * GOVERNOR_STUCK_LANDED_SHARE;
+            stuckWindows = stuck ? stuckWindows + 1 : 0;
+            if (stuckWindows >= GOVERNOR_STUCK_WINDOWS) {
+              // Disabled, not killed: the pin's next activation re-arms it —
+              // see onToggle. A genuine failure costs two seconds per entry
+              // for a couple of entries; a false one costs nothing.
+              governorFailed = true;
+              observer.disable();
+              release();
+              backlog = 0;
+            }
+            releasedSinceCheck = 0;
+            landedSinceCheck = 0;
+            lastStuckCheckAt = now;
           }
-          releasedSinceCheck = 0;
-          scrollAtCheck = window.scrollY;
-          lastStuckCheckAt = now;
         }
       }
       // iOS reports TouchEvent.clientY wildly wrong at a scroll of exactly 0
@@ -1235,7 +1266,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         // Never a jump — see FILM_CATCH_UP_LAG_S.
         const lag = Math.abs(wanted - shownFrame);
         const rate = lag > FILM_CATCH_UP_LAG_S * FPS ? rateCeiling() : governorMaxRate;
-        const maxStep = (rate * FPS * deltaMs) / 1000;
+        const maxStep = (rate * FPS * Math.min(deltaMs, MAX_TICK_MS)) / 1000;
         if (wanted > shownFrame) shownFrame = Math.min(wanted, shownFrame + maxStep);
         else if (wanted < shownFrame) shownFrame = Math.max(wanted, shownFrame - maxStep);
       }
@@ -1486,6 +1517,14 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
           // on the way out so leaving the section never coasts.
           onToggle: (self) => {
             journeyActive = self.isActive;
+            // A governor that stood down gets another chance on the next
+            // entry, a couple of times — see the stuck detector in drive.
+            if (self.isActive && governorFailed && governorRearms < GOVERNOR_REARMS) {
+              governorRearms += 1;
+              governorFailed = false;
+              stuckWindows = 0;
+              lastStuckCheckAt = 0;
+            }
             if (self.isActive && observer && !governorFailed) {
               claim();
               observer.enable();

@@ -307,8 +307,8 @@ const GOVERNOR_COAST_S = 0.25;
 const GOVERNOR_COAST_MIN_S = 0.35;
 const GOVERNOR_COAST_MAX_S = 0.9;
 const GOVERNOR_COAST_MIN_PX_S = 80;
-const GOVERNOR_TAIL_S = 0.5;
-const GOVERNOR_TAIL_FLOOR_RATE = 0.35;
+const GOVERNOR_TAIL_S = 0.8;
+const GOVERNOR_TAIL_FLOOR_RATE = 0.25;
 
 /**
  * THE GESTURE IS IN CHARGE OF THE BANK. Three rules, all from the handset:
@@ -466,14 +466,34 @@ const FILM_CATCH_UP_LAG_S = 3;
 /** Wanted-frame speed, in frames per second, below which the scroll counts as at rest. */
 const FILM_SETTLED_FPS = 2;
 /**
- * Wanted-frame speed, in frames per second, above which the scroll is not a
- * gesture but a navigation — the logo going home, an anchor — and the film
- * SNAPS to it instead of playing its way there. 480 is twenty times real
- * time: no touch under the governor comes near it (the band tops out at
- * 1.75x), and even an ungoverned native fling peaks well under it. An
- * instant scroll produces thousands.
+ * WHEN THE FILM SNAPS TO THE SCROLL instead of playing its way there.
+ *
+ * Two cases, both explicit. A navigation: the logo going home dispatches
+ * NAVIGATE_EVENT and the film follows the scroll directly for the moment it
+ * takes the scroll to land. And the pin being inactive: a film that is
+ * still playing its way to where the scroll went while its section is
+ * scrolling off the top of the screen is what the handset reported as "the
+ * scene kept running up there" — outside the pin the film is simply where
+ * the scroll says it is. Inside the pin, under a gesture, it never jumps.
+ *
+ * This replaced a velocity heuristic (snap above twenty times real time)
+ * that a native fling entering the pin from below could trip — "it jumped
+ * to the end of the scene" — which is why the trigger is now a signal and
+ * not a speed.
  */
-const FILM_SNAP_FPS = 480;
+const NAVIGATE_EVENT = "sonare:navigate";
+/**
+ * And one backward heuristic, kept narrow. A rewind is the expensive
+ * direction (a seek per frame), so a film asked to rewind fifteen seconds at
+ * 2x behind a scroll that got there in one — the status-bar tap on iOS, an
+ * anchor link back into the pin from below, a re-entry fling — is a quarter
+ * of a minute of the picture not obeying. Backward wanted speed past this
+ * (four times real time; the governed band never exceeds 1.75x in either
+ * direction) is not a gesture, and the film snaps. Forward never snaps on
+ * speed: a forward fling plays at 2x and looks like a fast-forward, and a
+ * speed trigger there is what once jumped a visitor to the end of a scene.
+ */
+const FILM_BACK_SNAP_FPS = 96;
 
 /** Data Saver: no background fetch, the tracks stream as they did before. */
 const SAVE_DATA =
@@ -697,8 +717,20 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
     let touchEvents = 0;
     let releasedTotal = 0;
     let landedTotal = 0;
-    /** The frame the film is actually handed — see FILM_LAG_CAP_S. */
+    /** The frame the film is actually handed — see FILM_CATCH_UP_LAG_S. */
     let shownFrame = 0;
+    /**
+     * A navigation is in progress — see NAVIGATE_EVENT. Cleared once the
+     * scroll has come to rest, so it covers an instant jump and a smooth
+     * anchor scroll of any length alike.
+     */
+    let navigating = false;
+    let navigatedAt = 0;
+    const onNavigate = () => {
+      navigating = true;
+      navigatedAt = performance.now();
+    };
+    window.addEventListener(NAVIGATE_EVENT, onNavigate);
     /** The wanted frame last tick and its smoothed speed, for the at-rest test. */
     let wantedPrev = 0;
     let wantedFps = 0;
@@ -1189,7 +1221,15 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
         wantedFps = wantedFps * 0.7 + instant * 0.3;
       }
       wantedPrev = wanted;
-      if (governorOff || Math.abs(wantedFps) > FILM_SNAP_FPS) shownFrame = wanted;
+      if (navigating && performance.now() - navigatedAt > 300 && Math.abs(wantedFps) < FILM_SETTLED_FPS) {
+        navigating = false;
+      }
+      const snap =
+        governorOff ||
+        !journeyActive ||
+        (navigating && wanted < shownFrame) ||
+        wantedFps < -FILM_BACK_SNAP_FPS;
+      if (snap) shownFrame = wanted;
       else {
         // Far behind, catch up at the engine's ceiling; otherwise the band.
         // Never a jump — see FILM_CATCH_UP_LAG_S.
@@ -1521,6 +1561,7 @@ export function MobileNarrative({ id, settle = 2, closing, hero }: Props) {
       // Kill, not disable: a live Observer left behind would keep swallowing
       // touchmove on a page that no longer has a film to govern.
       observer?.kill();
+      window.removeEventListener(NAVIGATE_EVENT, onNavigate);
       engines.forEach((e) => e?.destroy());
       aborter.abort();
       localUrls.forEach((u) => u && URL.revokeObjectURL(u));

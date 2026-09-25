@@ -21,8 +21,18 @@ const links = [
  * decision, not a scroll. The hash is cleared rather than set to #inicio so
  * the browser does not also perform its own (smooth) anchor jump.
  */
+/**
+ * Tells the phone journey a navigation is under way, so a film that would
+ * have to rewind to keep up snaps to the scroll instead. Every link in the
+ * navbar sends it; the smooth anchor scroll itself is left to the browser.
+ */
+function announceNavigation() {
+  window.dispatchEvent(new CustomEvent("sonare:navigate"));
+}
+
 function goHome(event: React.MouseEvent<HTMLAnchorElement>) {
   event.preventDefault();
+  announceNavigation();
   window.scrollTo({ top: 0, behavior: "instant" });
   if (window.location.hash) {
     history.replaceState(null, "", window.location.pathname + window.location.search);
@@ -162,6 +172,7 @@ export function Navbar() {
               <a
                 key={link.href}
                 href={link.href}
+                onClick={announceNavigation}
                 aria-current={isActive ? "true" : undefined}
                 className={`relative py-1 text-[0.82rem] font-medium tracking-wide transition-colors ${
                   isActive ? "text-sonare-white" : "text-sonare-silver hover:text-sonare-white"
@@ -179,6 +190,7 @@ export function Navbar() {
           })}
           <a
             href="#contato"
+            onClick={announceNavigation}
             className="rounded-md bg-sonare-white px-4 py-2 text-[0.82rem] font-bold text-sonare-black transition-[opacity,transform] duration-300 hover:opacity-85 active:scale-[0.98]"
           >
             Agendar Visita Técnica
@@ -208,7 +220,10 @@ export function Navbar() {
               <a
                 key={link.href}
                 href={link.href}
-                onClick={() => setMenuOpen(false)}
+                onClick={() => {
+                  announceNavigation();
+                  setMenuOpen(false);
+                }}
                 className="border-b border-white/5 py-3.5 text-[0.95rem] font-medium text-sonare-silver last:border-b-0"
               >
                 {link.label}
@@ -216,7 +231,10 @@ export function Navbar() {
             ))}
             <a
               href="#contato"
-              onClick={() => setMenuOpen(false)}
+              onClick={() => {
+                announceNavigation();
+                setMenuOpen(false);
+              }}
               className="mt-3 rounded-md bg-sonare-white px-4 py-3 text-center text-[0.9rem] font-bold text-sonare-black"
             >
               Agendar Visita Técnica

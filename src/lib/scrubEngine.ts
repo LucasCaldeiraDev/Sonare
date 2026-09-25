@@ -100,7 +100,17 @@ const LEAD_MAX_FRAMES = 12;
  * the rate formula below already reads a negative gap as "slow down", which
  * converges without ever stopping the pipeline. Past it, hold as before.
  */
-const LEAD_DEAD_ZONE_FRAMES = 1;
+const LEAD_DEAD_ZONE_FRAMES = 2;
+/*
+ * 2, from 1, for the coast: while the target decelerates, a rate that is only
+ * rewritten every RATE_WRITE_INTERVAL_MS runs the picture ahead of it by the
+ * rate difference times that interval — well over one frame at the top of a
+ * deceleration — and a lead of one frame was landing in the hold, which is a
+ * pause() and a play() per interval: the cycling this constant exists to
+ * prevent, back, only during the glide. Two frames of lead is still
+ * invisible, and inside it the rate formula slows the picture instead of
+ * stopping it.
+ */
 
 /**
  * playbackRate is rewritten only when it moves by more than this, and then
@@ -114,8 +124,8 @@ const LEAD_DEAD_ZONE_FRAMES = 1;
  * were not.
  */
 const RATE_WRITE_HYSTERESIS = 0.04;
-const RATE_WRITE_INTERVAL_MS = 250;
-const RATE_WRITE_URGENT = 0.3;
+const RATE_WRITE_INTERVAL_MS = 150;
+const RATE_WRITE_URGENT = 0.2;
 
 /**
  * CADENCE. 24 fps footage presents evenly on a phone only at rates where the

@@ -336,10 +336,24 @@ smooth` aos links de âncora, certo para pular à seção seguinte e errado para
 "me leve de volta ao topo" do fim de uma página cujos primeiros 10 000 px são o
 filme pinado: o scroll suave percorre a pista inteira, no celular leva
 segundos, e o filme rebobina embaixo da navbar o caminho todo. O logo agora
-faz `scrollTo` instantâneo (`goHome` em `Navbar.tsx`), e o filme reconhece uma
-navegação pela velocidade do pedido — acima de 20x o tempo real
-(`FILM_SNAP_FPS`) o frame mostrado salta junto em vez de tocar até lá. Nenhum
-gesto sob o governador chega perto disso.
+faz `scrollTo` instantâneo (`goHome` em `Navbar.tsx`) e avisa o filme com um
+evento (`sonare:navigate`), e por 0,8 s o frame mostrado segue o scroll direto
+em vez de tocar até lá. A primeira versão reconhecia a navegação pela
+velocidade do pedido (acima de 20x) e um arremesso nativo entrando no pin por
+baixo passava disso — "pulou para o fim da cena". Sinal, não velocidade.
+
+**Fora do pin o filme segue o scroll.** Com o "sem salto", um filme ainda
+alcançando o scroll a 2x depois do fim do pin ficava tocando enquanto a seção
+subia pela tela — "a cena ficou rodando na parte de cima". Com o pin inativo o
+frame mostrado é simplesmente o pedido; o "sem salto" vale dentro do pin, sob
+gesto.
+
+**A inércia sem travadas.** Durante a desaceleração a taxa só era reescrita a
+cada 250 ms; o quadro corria à frente do alvo que desacelera pela diferença de
+taxa vezes esse intervalo, passava da zona morta de 1 frame e caía no hold —
+pausa e play por intervalo, o ciclo de volta só na inércia. Zona morta a 2
+frames, reescrita a cada 150 ms (ou na hora se a mudança passa de 0,2), cauda
+da inércia de 0,8 s até 0,25x.
 
 **Dois limitadores, e por quê.** O governador de scroll mede o *gesto*: ele
 precisa possuir o toque, escrever o scroll e ter a página obedecendo — três
